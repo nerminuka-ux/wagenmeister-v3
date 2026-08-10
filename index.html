@@ -91,9 +91,9 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
   <div class="grid">
    <div><label>Zugnummer</label><input id="trainNo" inputmode="numeric"></div>
    <div><label>Datum</label><input id="date" type="date"></div>
-   <div><label>Von / gültig ab Bahnhof</label><input id="from" value="Gelsenkirchen Bismarck"></div>
+   <div><label>Von / gültig ab Bahnhof</label><input id="from" value="Gelsenkirchen Hafen"></div>
    <div><label>Nach / gültig bis Bahnhof</label><input id="to"></div>
-   <div><label>Uhrzeit (manuell)</label><input id="time" type="time"></div>
+   <div><label>Abfahrtszeit (manuell)</label><input id="time" type="time"></div>
    <div><label>Erstellt durch</label><input id="createdBy" value="Uka"></div>
   </div>
   <p class="note">Datum wird beim ersten Öffnen automatisch auf heute gesetzt und bleibt änderbar. Uhrzeit wird bewusst nicht automatisch gesetzt.</p>
@@ -300,13 +300,21 @@ function uicValid(value){
  return check===Number(d[11]);
 }
 
+function mergeMaster(old={},fresh={}){
+ const out={...old};
+ for(const [k,v] of Object.entries(fresh)){
+  if(k==='number'){out.number=v;continue}
+  if(v!==null && v!==undefined && v!=='') out[k]=v;
+ }
+ return out;
+}
 function dedupe(a){
  const m=new Map();
  for(const w of a){
   const k=norm(w.number);
   if(!k || !uicValid(k))continue;
   const old=m.get(k)||{};
-  m.set(k,{...old,...w,number:fmt(k)});
+  m.set(k,mergeMaster(old,{...w,number:fmt(k)}));
  }
  return [...m.values()];
 }
@@ -502,8 +510,14 @@ window.printView=id=>{
   ['schluss','fullBrake','dangerous'].forEach(id=>{if(saved[id]!==undefined)$(id).checked=!!saved[id]});
  }catch{}
  if(!$('date').value)$('date').value=new Date().toISOString().slice(0,10);
- try{db=JSON.parse(localStorage.getItem('wm_v3_db')||'null')||await (await fetch('wagons.json')).json()}catch{db=[]}
- db=dedupe(db);saveDB();
+ let fileDB=[],localDB=[];
+ try{
+  const r=await fetch('wagons.json?ts='+Date.now(),{cache:'no-store'});
+  fileDB=await r.json();
+ }catch{fileDB=[]}
+ try{localDB=JSON.parse(localStorage.getItem('wm_v3_db')||'[]')||[]}catch{localDB=[]}
+ db=dedupe([...(Array.isArray(localDB)?localDB:[]), ...(Array.isArray(fileDB)?fileDB:[])]);
+ saveDB();
  try{train=JSON.parse(localStorage.getItem('wm_v3_train')||'[]')}catch{train=[]}
  renderDB();renderTrain();updateDerived();
  if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
