@@ -49,6 +49,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
 .bottom{position:fixed;bottom:0;left:0;right:0;background:var(--p);display:grid;grid-template-columns:repeat(5,1fr);padding:6px 5px calc(6px + env(safe-area-inset-bottom));z-index:30}
 .nav{background:transparent;border:0;color:#cbd6d3;font-size:9px;padding:5px 2px}.nav span{display:block;font-size:18px}.nav.active{color:#fff}
 .dbitem{display:grid;grid-template-columns:1fr auto;gap:8px;border-bottom:1px solid #e8e3d9;padding:10px 0}.empty{text-align:center;color:var(--muted);padding:16px;font-size:13px}
+.scanrow{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:8px;margin:6px 0;background:#fff}.scanrow .ok{color:var(--ok);font-weight:800}.scanrow .warn{color:var(--danger);font-weight:800}
 .sheet-wrap{overflow:auto;border:1px solid #bfc7c2;background:white}
 .sheet{border-collapse:collapse;min-width:1200px;width:100%;font-size:11px}
 .sheet th,.sheet td{border:1px solid #9fa9a4;padding:5px 6px;text-align:center;white-space:nowrap}
@@ -145,6 +146,15 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
     <button class="btn secondary" id="saveMaster">Stammdaten speichern</button>
    </div>
    <p class="note">Ladungsgewicht, Gesamtgewicht, RID-Angaben, Zielbahnhof und Bemerkungen gelten nur für den aktuellen Zug. Sie werden nicht als feste Stammdaten gespeichert.</p>
+   <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
+    <label>Komplette Wagenliste fotografieren / auswählen</label>
+    <div class="actions">
+     <button class="btn secondary" id="scanListBtn">📷 Wagenliste erkennen</button>
+     <input id="listPhoto" type="file" accept="image/*" capture="environment" hidden>
+    </div>
+    <div id="listScanStatus" class="status"></div>
+    <div id="listScanResults" style="margin-top:8px"></div>
+   </div>
   </div>
  </div>
 
@@ -544,6 +554,76 @@ $('refreshDB').onclick=async()=>{
  }catch(e){
   box.className='status bad';
   box.textContent='Online-Aktualisierung nicht möglich. Lokale Datenbank bleibt unverändert.';
+ }
+};
+
+
+$('scanListBtn').onclick=()=>$('listPhoto').click();
+
+function extractUICCandidates(raw){
+ const cleaned=(raw||'').toUpperCase().replace(/[OQ]/g,'0').replace(/[IL|]/g,'1');
+ const hits=[];
+ for(const line of cleaned.split(/\r?\n/)){
+  const matches=line.match(/\d{2}\D*\d{2}\D*\d{4}\D*\d{3}\D*\d/g)||[];
+  for(const m of matches){
+   const d=norm(m);
+   if(d.length===12 && uicValid(d) && !hits.includes(d)) hits.push(d);
+  }
+ }
+ return hits;
+}
+
+function addScannedWagonToTrain(d){
+ const found=db.find(x=>norm(x.number)===d);
+ if(!found)return false;
+ if(train.some(w=>norm(w.number)===d))return true;
+ train.push({
+  ...found,
+  state:'beladen',
+  load:0,total:0,
+  effectiveBrakes:n(found.axles)||4,
+  ridGef:'',unNr:'',gefZettel:'',
+  special:'0',vmax:100,routeClass:'D',
+  remarks:'',destination:$('to').value.trim()
+ });
+ return true;
+}
+
+$('listPhoto').onchange=async e=>{
+ const file=e.target.files?.[0];if(!file)return;
+ const box=$('listScanStatus'),res=$('listScanResults');
+ box.style.display='block';box.className='status';box.textContent='Wagenliste wird erkannt …';
+ res.innerHTML='';
+ try{
+  const r=await Tesseract.recognize(file,'eng');
+  const candidates=extractUICCandidates(r.data.text||'');
+  if(!candidates.length){
+   box.className='status bad';
+   box.textContent='Keine sichere Wagennummer erkannt. Bitte die Liste näher, gerade und scharf fotografieren.';
+   return;
+  }
+  let foundCount=0,missingCount=0;
+  for(const d of candidates){
+   const found=db.find(x=>norm(x.number)===d);
+   const row=document.createElement('div');row.className='scanrow';
+   if(found){
+    foundCount++;
+    row.innerHTML=`<div><div class="wn">${fmt(d)}</div><div class="meta">${found.length||''} m · Tara ${found.tare||''} t · ${found.brakeShoe||''} · Hbr ${found.handBrake||''}</div></div><div class="ok">✓ DB</div>`;
+   }else{
+    missingCount++;
+    row.innerHTML=`<div><div class="wn">${fmt(d)}</div><div class="meta">Gültige UIC-Nummer, aber nicht in der Stammdatenbank.</div></div><div class="warn">Prüfen</div>`;
+   }
+   res.appendChild(row);
+  }
+  if(foundCount){
+   for(const d of candidates) addScannedWagonToTrain(d);
+   saveTrain();renderTrain();updateDerived();
+  }
+  box.className=missingCount?'status':'status good';
+  box.textContent=`${candidates.length} gültige Wagennummer(n) erkannt · ${foundCount} aus Datenbank übernommen${missingCount?` · ${missingCount} nicht gefunden`:''}.`;
+ }catch{
+  box.className='status bad';
+  box.textContent='Wagenlisten-Erkennung nicht verfügbar.';
  }
 };
 
