@@ -255,7 +255,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
 
 <section id="datenbank" class="view">
  <div class="card"><div class="title"><div class="n">1</div><h2>Kesselwagen-Datenbank <span id="dbCount" style="font-size:12px;color:var(--muted)"></span></h2></div><input id="filter" inputmode="numeric" placeholder="Wagennummer suchen"><div id="dbList"></div></div>
- <div class="card"><div class="title"><div class="n">2</div><h2>Daten sichern</h2></div><div class="actions"><button class="btn primary" id="export">Export</button><button class="btn secondary" id="importBtn">Import</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><p class="note">Doppelte Wagennummern werden beim Import automatisch zusammengeführt. Wagennummern mit ungültiger UIC-Prüfziffer werden abgelehnt.</p></div>
+ <div class="card"><div class="title"><div class="n">2</div><h2>Daten sichern</h2></div><div class="actions"><button class="btn primary" id="export">Export</button><button class="btn secondary" id="importBtn">Import</button><button class="btn secondary" id="refreshDB">Online-Datenbank aktualisieren</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><div id="dbSyncStatus" class="status good" style="display:block">Beim Start wird automatisch die aktuelle wagons.json geladen. Offline bleibt die zuletzt gespeicherte Datenbank verfügbar.</div><p class="note">Der manuelle Import bleibt als Backup erhalten. Doppelte Wagennummern werden beim Import automatisch zusammengeführt. Wagennummern mit ungültiger UIC-Prüfziffer werden abgelehnt.</p></div>
 </section>
 
 <section id="mehr" class="view">
@@ -516,6 +516,37 @@ $('importFile').onchange=async e=>{
  }catch{alert('Import fehlgeschlagen.')}
 };
 
+$('refreshDB').onclick=async()=>{
+ const box=$('dbSyncStatus');
+ box.style.display='block';box.className='status';box.textContent='Online-Datenbank wird geladen …';
+ try{
+  const r=await fetch('wagons.json?ts='+Date.now(),{cache:'no-store'});
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  const x=await r.json();
+  if(!Array.isArray(x))throw new Error('Format');
+  const normalized=x.map(w=>({
+   ...w,
+   number:w.number,
+   axles:pickField(w,'axles','radsatz','radsätze'),
+   length:pickField(w,'length','laenge','lengthM','lengthOverBuffers'),
+   tare:pickField(w,'tare','tara','eigengewicht','emptyWeight'),
+   brakeShoe:pickField(w,'brakeShoe','shoe','bremssohle'),
+   brakeP:pickField(w,'brakeP','bp','bremsgewichtP'),
+   brakeG:pickField(w,'brakeG','bg','bremsgewichtG'),
+   handBrake:pickField(w,'handBrake','hbr','festhaltekraft')
+  }));
+  db=dedupe(normalized);
+  saveDB();renderDB();
+  localStorage.setItem('wm_v3_db_source','wagons.json');
+  localStorage.setItem('wm_v3_db_updated',new Date().toISOString());
+  box.className='status good';
+  box.textContent='✓ Online-Datenbank aktualisiert: '+db.length+' gültige Wagen.';
+ }catch(e){
+  box.className='status bad';
+  box.textContent='Online-Aktualisierung nicht möglich. Lokale Datenbank bleibt unverändert.';
+ }
+};
+
 $('scanBtn').onclick=()=>$('photo').click();
 $('photo').onchange=async e=>{
  const file=e.target.files?.[0];if(!file)return;
@@ -564,7 +595,19 @@ window.printView=id=>{
  }
  fileDB=(Array.isArray(fileDB)?fileDB:[]).map(normalizeRecord);
  localDB=(Array.isArray(localDB)?localDB:[]).map(normalizeRecord);
- db=dedupe([...localDB,...fileDB]);
+
+ // GitHub-Datei ist die führende Stammdatenbank.
+ // Bei erfolgreichem Laden ersetzt sie die lokale Stammdatenbank vollständig.
+ // Nur wenn wagons.json nicht erreichbar ist (z. B. offline), wird die zuletzt
+ // lokal gespeicherte Datenbank verwendet.
+ if(fileDB.length){
+   db=dedupe(fileDB);
+   localStorage.setItem('wm_v3_db',JSON.stringify(db));
+   localStorage.setItem('wm_v3_db_source','wagons.json');
+   localStorage.setItem('wm_v3_db_updated',new Date().toISOString());
+ }else{
+   db=dedupe(localDB);
+ }
  saveDB();
  try{train=JSON.parse(localStorage.getItem('wm_v3_train')||'[]')}catch{train=[]}
  renderDB();renderTrain();updateDerived();
