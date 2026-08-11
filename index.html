@@ -44,6 +44,9 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
 .preview{display:none;width:100%;max-height:220px;object-fit:cover;border-radius:10px;margin-top:8px}
 .wagon{display:grid;grid-template-columns:30px 1fr auto;gap:8px;align-items:center;border:1px solid var(--line);border-radius:11px;padding:9px;margin-bottom:7px;background:#fff}
 .wagonTools{display:flex;gap:5px;align-items:center}
+.wagonMain{cursor:pointer}
+.editBanner{display:none;margin:8px 0;padding:9px 11px;border-radius:10px;background:#fff3cd;border:1px solid #e6cf78;font-weight:800}
+
 .wagon.draggable{touch-action:none;user-select:none;-webkit-user-select:none}
 .wagon.dragging{opacity:.35}
 .wagon.dropTarget{outline:3px solid rgba(18,63,62,.22)}
@@ -137,6 +140,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
   </div>
 
   <div id="drawer" class="drawer">
+   <div id="editBanner" class="editBanner">Wagen bearbeiten</div>
    <div class="grid3" style="margin-top:10px">
     <div><label>Radsätze</label><input id="axles" type="number" inputmode="numeric"></div>
     <div><label>Länge ü. P. (m)</label><input id="length" type="number" step="0.01" inputmode="decimal"></div>
@@ -167,6 +171,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
 
    <div class="actions">
     <button class="btn gold" id="add">+ Wagen</button>
+    <button class="btn secondary" id="cancelEdit" style="display:none">Bearbeiten abbrechen</button>
     <button class="btn secondary" id="saveMaster">Stammdaten speichern</button>
    </div>
    <p class="note">Ladungsgewicht, Gesamtgewicht, RID-Angaben, Zielbahnhof und Bemerkungen gelten nur für den aktuellen Zug. Sie werden nicht als feste Stammdaten gespeichert.</p>
@@ -495,6 +500,61 @@ function currentRow(){
  };
 }
 
+let editingIndex=null;
+
+function setStateChip(value){
+ state=value||'beladen';
+ document.querySelectorAll('[data-state]').forEach(x=>x.classList.toggle('active',x.dataset.state===state));
+}
+
+function stopEditMode(clearNumber=false){
+ editingIndex=null;
+ $('editBanner').style.display='none';
+ $('cancelEdit').style.display='none';
+ $('add').textContent='+ Wagen';
+ if(clearNumber)resetForNextWagon();
+}
+
+window.editWagon=i=>{
+ if(i<0||i>=train.length)return;
+ clearTimeout(quickAddTimer);
+ editingIndex=i;
+ const w=train[i];
+
+ $('wagonSearch').value=fmt(w.number);
+ $('drawer').classList.add('open');
+ $('editBanner').style.display='block';
+ $('editBanner').textContent='Wagen '+(i+1)+' bearbeiten · '+fmt(w.number);
+ $('cancelEdit').style.display='inline-block';
+ $('add').textContent='Änderungen speichern';
+
+ $('axles').value=w.axles??'';
+ $('length').value=w.length??'';
+ $('tare').value=w.tare??'';
+ $('shoe').value=w.brakeShoe??'';
+ $('bp').value=w.brakeP??'';
+ $('bg').value=w.brakeG??'';
+ $('hbr').value=w.handBrake??'';
+ $('load').value=w.load??'';
+ $('total').value=w.total??'';
+ $('effectiveBrakes').value=w.effectiveBrakes??'';
+ $('ridGef').value=w.ridGef??'';
+ $('unNr').value=w.unNr??'';
+ $('gefZettel').value=w.gefZettel??'';
+ $('special').value=w.special??'0';
+ $('vmax').value=w.vmax??100;
+ $('routeClass').value=w.routeClass??'D';
+ $('remarks').value=w.remarks??'';
+ setStateChip(w.state||'beladen');
+
+ $('uicStatus').style.display='block';
+ $('uicStatus').className='status good';
+ $('uicStatus').textContent='Wagen aus aktuellem Zug geöffnet. Änderungen betreffen diesen Zug.';
+ setTimeout(()=>$('drawer').scrollIntoView({behavior:'smooth',block:'start'}),40);
+};
+
+$('cancelEdit').onclick=()=>stopEditMode(true);
+
 $('saveMaster').onclick=()=>{
  const w=master();
  if(norm(w.number).length!==12)return alert('Wagennummer unvollständig.');
@@ -509,11 +569,23 @@ $('add').onclick=()=>{
  if(norm(row.number).length!==12)return alert('Wagennummer unvollständig.');
  if(!uicValid(row.number))return alert('UIC-Prüfziffer stimmt nicht. Der Wagen wird nicht übernommen.');
  if(!row.total && row.tare)row.total=row.tare+row.load;
- train.push(row);
+
+ if(editingIndex!==null){
+  train[editingIndex]=row;
+ }else{
+  if(train.some(w=>norm(w.number)===norm(row.number)))return alert('Dieser Wagen ist bereits im aktuellen Zug.');
+  train.push(row);
+ }
+
  const m=master(),i=db.findIndex(x=>norm(x.number)===norm(m.number));
  if(i>=0)db[i]={...db[i],...m};else db.push(m);
  saveDB();saveTrain();renderTrain();renderDB();updateDerived();
- resetForNextWagon();
+
+ if(editingIndex!==null){
+  stopEditMode(true);
+ }else{
+  resetForNextWagon();
+ }
 };
 
 function renderTrain(){
@@ -522,9 +594,9 @@ function renderTrain(){
   const d=document.createElement('div');d.className='wagon draggable';d.dataset.index=i;
   const weightText=n(w.total)>0?('Gesamt '+Number(w.total).toFixed(2)+' t'):('Tara '+Number(w.tare||0).toFixed(2)+' t');
   d.innerHTML=`<button class="pos moveable" onclick="moveWagonPrompt(${i})" title="Position ändern">${i+1}</button>
-   <div><div class="wn">${w.number}</div>
+   <div class="wagonMain" onclick="editWagon(${i})"><div class="wn">${w.number}</div>
    <div class="meta">${w.axles||''} Rads. · ${w.length||0} m · ${weightText} · ${w.brakeShoe||''} · ${w.unNr?('UN '+w.unNr):w.state||''}</div></div>
-   <div class="wagonTools"><button class="btn danger" onclick="removeWagon(${i})">×</button></div>`;
+   <div class="wagonTools"><button class="btn danger" onclick="event.stopPropagation();removeWagon(${i})">×</button></div>`;
   $('list').appendChild(d);
   bindDrag(d);
  });
