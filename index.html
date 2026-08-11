@@ -43,6 +43,14 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
 .status.bad{background:#f7e5e5;color:#8c2d2d}.status.good{background:#e7f2eb;color:#176d42}
 .preview{display:none;width:100%;max-height:220px;object-fit:cover;border-radius:10px;margin-top:8px}
 .wagon{display:grid;grid-template-columns:30px 1fr auto;gap:8px;align-items:center;border:1px solid var(--line);border-radius:11px;padding:9px;margin-bottom:7px;background:#fff}
+.wagonTools{display:flex;gap:5px;align-items:center}
+.mini{min-width:34px;padding:7px 8px;border-radius:9px;border:1px solid var(--line);background:#eef5f3;color:var(--p);font-weight:900}
+.mini:disabled{opacity:.35}
+.pos.moveable{cursor:pointer;border:1px solid #d7e5e1}
+.quickRow{display:grid;grid-template-columns:1fr auto auto;gap:7px;align-items:end}
+.quickNext{white-space:nowrap}
+.trainOrderTools{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px}
+
 .pos{width:30px;height:30px;border-radius:9px;background:#e8efed;color:var(--p);display:grid;place-items:center;font-weight:800}.wn{font-weight:800}.meta{font-size:11px;color:var(--muted);margin-top:2px}
 .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:9px}.stat{background:#f0f1eb;border-radius:10px;padding:8px;text-align:center;font-size:10px;color:var(--muted)}.stat b{display:block;color:#1d2725;font-size:14px;margin-top:2px}
 .view{display:none}.view.active{display:block}
@@ -103,10 +111,12 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
  <div class="card">
   <div class="title"><div class="n">2</div><h2>Wagen erfassen</h2></div>
   <label>Wagennummer</label>
-  <div class="row">
-   <input id="wagonSearch" inputmode="numeric" pattern="[0-9]*" placeholder="37 84 7829 650-2">
+  <div class="quickRow">
+   <input id="wagonSearch" inputmode="numeric" pattern="[0-9]*" placeholder="37 84 7829 650-2" autocomplete="off">
+   <button class="btn secondary quickNext" id="nextWagonBtn">Nächster →</button>
    <button class="btn primary scan" id="scanBtn">📷</button>
   </div>
+  <div class="note" style="margin-top:6px">Schnellerfassung: vollständige Datenbanktreffer werden automatisch übernommen und die Eingabe springt zum nächsten Wagen.</div>
   <div id="uicStatus" class="status"></div>
   <input id="photo" type="file" accept="image/*" capture="environment" hidden>
   <img id="preview" class="preview">
@@ -162,6 +172,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
 
  <div class="card">
   <div class="title"><div class="n">3</div><h2>Wagen im aktuellen Zug</h2></div>
+  <div class="trainOrderTools"><button class="btn secondary" id="reverseTrain">↕ Ganze Reihenfolge umkehren</button></div>
   <div id="list"></div><div id="empty" class="empty">Noch keine Wagen im Zug.</div>
   <div class="summary">
    <div class="stat">Wagen<b id="sCars">0</b></div><div class="stat">Radsätze<b id="sAx">0</b></div><div class="stat">Länge<b><span id="sLen">0.00</span> m</b></div>
@@ -357,9 +368,60 @@ function checkUIC(){
  if(uicValid(d)){box.className='status good';box.textContent='✓ UIC-Prüfziffer stimmt';}
  else{box.className='status bad';box.textContent='✕ Prüfziffer stimmt nicht – Wagen wird nicht gespeichert';}
 }
+let quickAddTimer=null;
+
+function resetForNextWagon(){
+ $('wagonSearch').value='';
+ $('drawer').classList.remove('open');
+ $('uicStatus').style.display='none';
+ $('status').style.display='none';
+ setTimeout(()=>$('wagonSearch').focus(),50);
+}
+
+function addRecognizedWagonQuick(no){
+ const d=norm(no);
+ if(d.length!==12 || !uicValid(d))return false;
+ const found=db.find(x=>norm(x.number)===d);
+ if(!found)return false;
+ if(train.some(w=>norm(w.number)===d)){
+  $('uicStatus').style.display='block';
+  $('uicStatus').className='status bad';
+  $('uicStatus').textContent='Wagen ist bereits im aktuellen Zug.';
+  return false;
+ }
+ train.push({
+  ...found,number:fmt(d),state:'beladen',
+  load:0,total:n(found.tare)||0,effectiveBrakes:n(found.axles)||4,
+  ridGef:'',unNr:'',gefZettel:'',special:'0',vmax:100,routeClass:'D',
+  remarks:'',destination:$('to').value.trim()
+ });
+ saveTrain();renderTrain();updateDerived();
+ resetForNextWagon();
+ return true;
+}
+
 $('wagonSearch').oninput=e=>{
  e.target.value=fmt(e.target.value);checkUIC();
- if(norm(e.target.value).length===12 && uicValid(e.target.value))loadCurrent(e.target.value);
+ clearTimeout(quickAddTimer);
+ const d=norm(e.target.value);
+ if(d.length===12 && uicValid(d)){
+  loadCurrent(d);
+  if(db.some(x=>norm(x.number)===d)){
+   quickAddTimer=setTimeout(()=>{
+    if(norm($('wagonSearch').value)===d)addRecognizedWagonQuick(d);
+   },700);
+  }
+ }
+};
+
+$('nextWagonBtn').onclick=()=>{
+ clearTimeout(quickAddTimer);
+ const d=norm($('wagonSearch').value);
+ if(d.length===12 && uicValid(d)){
+  if(!addRecognizedWagonQuick(d)){loadCurrent(d);$('wagonSearch').focus();}
+ }else{
+  checkUIC();$('wagonSearch').focus();
+ }
 };
 
 function pickField(w,...keys){
@@ -447,7 +509,7 @@ $('add').onclick=()=>{
  const m=master(),i=db.findIndex(x=>norm(x.number)===norm(m.number));
  if(i>=0)db[i]={...db[i],...m};else db.push(m);
  saveDB();saveTrain();renderTrain();renderDB();updateDerived();
- $('wagonSearch').value='';$('drawer').classList.remove('open');$('uicStatus').style.display='none';
+ resetForNextWagon();
 };
 
 function renderTrain(){
@@ -455,17 +517,47 @@ function renderTrain(){
  train.forEach((w,i)=>{
   const d=document.createElement('div');d.className='wagon';
   const weightText=n(w.total)>0?('Gesamt '+Number(w.total).toFixed(2)+' t'):('Tara '+Number(w.tare||0).toFixed(2)+' t');
-  d.innerHTML=`<div class="pos">${i+1}</div><div><div class="wn">${w.number}</div>
+  d.innerHTML=`<button class="pos moveable" onclick="moveWagonPrompt(${i})" title="Position ändern">${i+1}</button>
+   <div><div class="wn">${w.number}</div>
    <div class="meta">${w.axles||''} Rads. · ${w.length||0} m · ${weightText} · ${w.brakeShoe||''} · ${w.unNr?('UN '+w.unNr):w.state||''}</div></div>
-   <button class="btn danger" onclick="removeWagon(${i})">×</button>`;
+   <div class="wagonTools">
+    <button class="mini" onclick="moveWagon(${i},-1)" ${i===0?'disabled':''}>↑</button>
+    <button class="mini" onclick="moveWagon(${i},1)" ${i===train.length-1?'disabled':''}>↓</button>
+    <button class="btn danger" onclick="removeWagon(${i})">×</button>
+   </div>`;
   $('list').appendChild(d)
  });
  const s=k=>train.reduce((a,w)=>a+n(w[k]),0);
  $('sCars').textContent=train.length;$('sAx').textContent=s('axles');$('sLen').textContent=s('length').toFixed(2);
  $('sTare').textContent=s('tare').toFixed(2);$('sLoad').textContent=s('load').toFixed(2);$('sTotal').textContent=s('total').toFixed(2);
 }
-window.removeWagon=i=>{train.splice(i,1);saveTrain();renderTrain();updateDerived()}
-$('clear').onclick=()=>{if(confirm('Zug wirklich leeren?')){train=[];saveTrain();renderTrain();updateDerived()}}
+
+function persistTrainOrder(){
+ saveTrain();renderTrain();updateDerived();
+}
+window.moveWagon=(i,dir)=>{
+ const j=i+dir;
+ if(j<0||j>=train.length)return;
+ [train[i],train[j]]=[train[j],train[i]];
+ persistTrainOrder();
+};
+window.moveWagonPrompt=i=>{
+ const current=i+1;
+ const raw=prompt(`Wagen steht aktuell auf Position ${current}.\nNeue Position (1–${train.length}):`,String(current));
+ if(raw===null)return;
+ const target=Math.max(1,Math.min(train.length,parseInt(raw,10)||current))-1;
+ if(target===i)return;
+ const [w]=train.splice(i,1);
+ train.splice(target,0,w);
+ persistTrainOrder();
+};
+$('reverseTrain').onclick=()=>{
+ if(train.length<2)return;
+ train.reverse();
+ persistTrainOrder();
+};
+window.removeWagon=i=>{train.splice(i,1);persistTrainOrder()}
+$('clear').onclick=()=>{if(confirm('Zug wirklich leeren?')){train=[];persistTrainOrder()}}
 
 function renderDB(){
  $('dbCount').textContent='('+db.length+')';
