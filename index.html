@@ -91,12 +91,19 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
 @media(max-width:620px){.docSummary{grid-template-columns:1fr 1fr}}
 
 @media print{
+ html,body{background:#fff!important;height:auto!important;overflow:visible!important}
+ body{padding:0!important;margin:0!important}
  .top,.bottom,.no-print{display:none!important}
- body{padding:0;background:#fff}
- main{max-width:none;padding:0}.card{box-shadow:none;border:0;margin:0;padding:0}
- .view{display:none!important}.view.printing{display:block!important}
- .sheet-wrap{overflow:visible;border:0}.sheet{min-width:0;font-size:8px}.sheet th,.sheet td{padding:3px}
- .doc{border:0}
+ main{display:block!important;max-width:none!important;padding:0!important;margin:0!important}
+ .view{display:none!important}
+ .view.printing{display:block!important;position:static!important;visibility:visible!important;width:100%!important}
+ .view.printing *{visibility:visible!important}
+ .card{display:block!important;box-shadow:none!important;border:0!important;margin:0!important;padding:0!important;break-inside:auto}
+ .sheet-wrap{display:block!important;overflow:visible!important;border:0!important;width:100%!important}
+ .sheet{min-width:0!important;width:100%!important;font-size:7px!important;table-layout:auto}
+ .sheet th,.sheet td{padding:2px!important}
+ .doc{display:block!important;border:0!important;break-inside:avoid-page}
+ @page{size:A4 landscape;margin:8mm}
 }
 </style>
 </head>
@@ -169,9 +176,10 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
     <div><label>Aktuelle Ladung (t)</label><input id="load" type="number" step="0.01" inputmode="decimal"></div>
     <div><label>Aktuelles Gesamtgewicht (t)</label><input id="total" type="number" step="0.01" inputmode="decimal"></div>
     <div><label>Wirksame Bremsen</label><input id="effectiveBrakes" type="number" inputmode="numeric" placeholder="z. B. 4"></div>
-    <div><label>RID Gefahr-Nr.</label><input id="ridGef" inputmode="numeric"></div>
-    <div><label>UN-Nr.</label><input id="unNr" inputmode="numeric"></div>
-    <div><label>Gefahrzettel</label><input id="gefZettel"></div>
+    <div><label>RID Gefahr-Nr.</label><input id="ridGef" inputmode="numeric" placeholder="z. B. 33"></div>
+    <div><label>UN-Nr.</label><input id="unNr" inputmode="numeric" placeholder="z. B. 1203"></div>
+    <div><label>RID-Klasse</label><input id="ridClass" inputmode="decimal" placeholder="z. B. 3, 6.1, 8, 9"></div>
+    <div><label>Gefahrzettel</label><input id="gefZettel" placeholder="z. B. 3"></div>
     <div><label>Außergewöhnliche Sendung</label><select id="special"><option value="0">Nein</option><option value="1">Ja</option></select></div>
     <div><label>V max (km/h)</label><input id="vmax" type="number" inputmode="numeric" value="100"></div>
     <div><label>Streckenklasse</label><input id="routeClass" value="D"></div>
@@ -220,16 +228,16 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
   <div class="sheet-wrap" style="margin-top:10px">
    <table class="sheet">
     <thead>
-     <tr><th colspan="18" class="head1">GELSEN-LOG. Wagenliste</th></tr>
+     <tr><th colspan="19" class="head1">GELSEN-LOG. Wagenliste</th></tr>
      <tr>
       <th>Pos.</th><th>Nummer</th><th>Radsätze</th><th>Länge ü. P. (m)</th><th>Ladungsgewicht (t)</th><th>Gesamtgewicht (t)</th>
-      <th>Bremssohle</th><th>P</th><th>G</th><th>wirks. Bremsen</th><th>Hbr (kN)</th><th>Gef.-Nr.</th><th>UN-Nr.</th>
+      <th>Bremssohle</th><th>P</th><th>G</th><th>wirks. Bremsen</th><th>Hbr (kN)</th><th>Gef.-Nr.</th><th>UN-Nr.</th><th>RID-Klasse</th>
       <th>Gef.-Zettel</th><th>außerg. Sendung</th><th>Zielbahnhof</th><th>V max</th><th>Streckenklasse / Bemerkungen</th>
      </tr>
     </thead>
     <tbody id="sheetBody"></tbody>
     <tfoot>
-     <tr><th colspan="2">Summe</th><th id="wlAx">0</th><th id="wlLen">0</th><th id="wlLoad">0</th><th id="wlTotal">0</th><th colspan="12"></th></tr>
+     <tr><th colspan="2">Summe</th><th id="wlAx">0</th><th id="wlLen">0</th><th id="wlLoad">0</th><th id="wlTotal">0</th><th colspan="13"></th></tr>
     </tfoot>
    </table>
   </div>
@@ -272,6 +280,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
     <div class="doc-row"><b>Bremsstellung:</b> <span id="wuBrakeMode">P</span></div>
     <div class="doc-row"><b>Bremsgewicht:</b> <span id="wuBrakeWeight">0</span> t</div>
     <div class="doc-row"><b>Gefahrgutwagen:</b> <span id="wuDangerCars">0</span></div>
+    <div class="doc-row"><b>RID-Klassen im Zug:</b> <span id="wuRidClasses">–</span></div>
     <div class="doc-row"><b>Erstes Fahrzeug:</b> <span data-bind="firstCar">–</span></div>
     <div class="doc-row"><b>Letztes Fahrzeug:</b> <span data-bind="lastCar">–</span></div>
    </div>
@@ -308,7 +317,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
     <p class="note">Diese Tätigkeiten werden nicht automatisch als erledigt markiert. Sie müssen von dir aktiv bestätigt werden.</p>
    </div>
   </div>
-  <div class="actions no-print"><button class="btn primary" onclick="printView('dokumente')">Dokumente drucken</button></div>
+  <div class="actions no-print"><button class="btn primary" onclick="printView('dokumente')">Dokumente drucken</button><span class="note">Beim Drucken wird die Dokumentansicht zuerst vollständig aufgebaut, damit auf dem iPhone keine leere Seite entsteht.</span></div>
  </div>
 </section>
 
@@ -521,7 +530,7 @@ function currentRow(){
   ...m,state,
   load:n($('load').value),total:n($('total').value),
   effectiveBrakes:n($('effectiveBrakes').value),
-  ridGef:$('ridGef').value.trim(),unNr:$('unNr').value.trim(),gefZettel:$('gefZettel').value.trim(),
+  ridGef:$('ridGef').value.trim(),unNr:$('unNr').value.trim(),ridClass:$('ridClass').value.trim(),gefZettel:$('gefZettel').value.trim(),
   special:$('special').value,vmax:n($('vmax').value),routeClass:$('routeClass').value.trim(),
   remarks:$('remarks').value.trim(),destination:$('to').value.trim()
  };
@@ -567,6 +576,7 @@ window.editWagon=i=>{
  $('effectiveBrakes').value=w.effectiveBrakes??'';
  $('ridGef').value=w.ridGef??'';
  $('unNr').value=w.unNr??'';
+ $('ridClass').value=w.ridClass??'';
  $('gefZettel').value=w.gefZettel??'';
  $('special').value=w.special??'0';
  $('vmax').value=w.vmax??100;
@@ -622,7 +632,7 @@ function renderTrain(){
   const weightText=n(w.total)>0?('Gesamt '+Number(w.total).toFixed(2)+' t'):('Tara '+Number(w.tare||0).toFixed(2)+' t');
   d.innerHTML=`<button class="pos moveable" onclick="moveWagonPrompt(${i})" title="Position ändern">${i+1}</button>
    <div class="wagonMain" onclick="editWagon(${i})"><div class="wn">${w.number}</div>
-   <div class="meta">${w.axles||''} Rads. · ${w.length||0} m · ${weightText} · ${w.brakeShoe||''} · ${w.unNr?('UN '+w.unNr):w.state||''}</div></div>
+   <div class="meta">${w.axles||''} Rads. · ${w.length||0} m · ${weightText} · ${w.brakeShoe||''} · ${w.unNr?('UN '+w.unNr+(w.ridClass?' · Kl. '+w.ridClass:'')):w.state||''}</div></div>
    <div class="wagonTools"><button class="btn danger" onclick="event.stopPropagation();removeWagon(${i})">×</button></div>`;
   $('list').appendChild(d);
   bindDrag(d);
@@ -735,7 +745,7 @@ function renderSheet(){
   const tr=document.createElement('tr');
   tr.innerHTML=`<td>${i+1}</td><td>${w.number}</td><td>${w.axles||''}</td><td>${f(w.length)}</td><td>${f(w.load)}</td><td>${f(w.total)}</td>
   <td>${w.brakeShoe||''}</td><td>${w.brakeP||''}</td><td>${w.brakeG||''}</td><td>${w.effectiveBrakes||''}</td><td>${w.handBrake||''}</td>
-  <td>${w.ridGef||''}</td><td>${w.unNr||''}</td><td>${w.gefZettel||''}</td><td>${w.special==='1'?'Ja':''}</td>
+  <td>${w.ridGef||''}</td><td>${w.unNr||''}</td><td>${w.ridClass||''}</td><td>${w.gefZettel||''}</td><td>${w.special==='1'?'Ja':''}</td>
   <td>${w.destination||$('to').value||''}</td><td>${w.vmax||''}</td><td class="left">${[w.routeClass,w.remarks].filter(Boolean).join(' · ')}</td>`;
   body.appendChild(tr)
  });
@@ -761,7 +771,8 @@ function updateDerived(){
  const dateVal=$('date').value?new Date($('date').value+'T00:00:00').toLocaleDateString('de-DE'):'–';
  const mode=$('trainBrakeMode').value||'P';
  const brake=train.reduce((a,w)=>a+selectedBrakeWeight(w),0);
- const dangerCars=train.filter(w=>w.unNr||w.ridGef).length;
+ const dangerCars=train.filter(w=>w.unNr||w.ridGef||w.ridClass||w.gefZettel).length;
+ const ridClasses=[...new Set(train.map(w=>String(w.ridClass||'').trim()).filter(Boolean))];
  const vals={trainNo:$('trainNo').value||'–',date:dateVal,from:$('from').value||'–',to:$('to').value||'–',time:$('time').value||'–',createdBy:$('createdBy').value||'–',firstCar:first,lastCar:last};
  document.querySelectorAll('[data-bind]').forEach(el=>el.textContent=vals[el.dataset.bind]??'–');
  $('wlTrain').textContent=vals.trainNo;$('wlFrom').textContent=vals.from;$('wlTo').textContent=vals.to;$('wlDate').textContent=vals.date;$('wlTime').textContent=vals.time;
@@ -771,7 +782,7 @@ function updateDerived(){
 
  $('docCars').textContent=train.length;$('docAxles2').textContent=s('axles');
  $('wuWeight').textContent=s('total').toFixed(2);$('wuLength').textContent=s('length').toFixed(2);
- $('wuBrakeMode').textContent=mode;$('wuBrakeWeight').textContent=brake.toFixed(0);$('wuDangerCars').textContent=dangerCars;
+ $('wuBrakeMode').textContent=mode;$('wuBrakeWeight').textContent=brake.toFixed(0);$('wuDangerCars').textContent=dangerCars;$('wuRidClasses').textContent=ridClasses.length?ridClasses.join(', '):'–';
 
  $('meldeWeight').textContent=s('total').toFixed(2);$('meldeAxles').textContent=s('axles');
  $('dangerous').checked=dangerCars>0;
@@ -1166,10 +1177,38 @@ $('photo').onchange=async e=>{
  }
 };
 
-window.printView=id=>{
+let activePrintView=null;
+
+function clearPrintMode(){
  document.querySelectorAll('.view').forEach(v=>v.classList.remove('printing'));
- $(id).classList.add('printing');window.print();setTimeout(()=>$(id).classList.remove('printing'),300);
+ activePrintView=null;
+}
+
+window.printView=id=>{
+ clearPrintMode();
+ const view=$(id);
+ if(!view)return;
+ activePrintView=id;
+ view.classList.add('printing');
+ updateDerived();
+
+ // iPhone/Safari needs time to lay out the print-only view before opening
+ // the print dialog. Removing the class too early can create a blank page.
+ requestAnimationFrame(()=>{
+  requestAnimationFrame(()=>{
+   setTimeout(()=>window.print(),120);
+  });
+ });
 };
+
+window.addEventListener('afterprint',()=>{
+ setTimeout(clearPrintMode,250);
+});
+
+// Fallback for browsers that do not fire afterprint reliably.
+window.addEventListener('focus',()=>{
+ if(activePrintView)setTimeout(clearPrintMode,800);
+});
 
 (async()=>{
  try{
