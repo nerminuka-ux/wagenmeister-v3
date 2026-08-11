@@ -454,8 +454,9 @@ function renderTrain(){
  $('list').innerHTML='';$('empty').style.display=train.length?'none':'block';
  train.forEach((w,i)=>{
   const d=document.createElement('div');d.className='wagon';
+  const weightText=n(w.total)>0?('Gesamt '+Number(w.total).toFixed(2)+' t'):('Tara '+Number(w.tare||0).toFixed(2)+' t');
   d.innerHTML=`<div class="pos">${i+1}</div><div><div class="wn">${w.number}</div>
-   <div class="meta">${w.axles||''} Rads. · ${w.length||0} m · ${w.total||0} t · ${w.brakeShoe||''} · ${w.unNr?('UN '+w.unNr):w.state||''}</div></div>
+   <div class="meta">${w.axles||''} Rads. · ${w.length||0} m · ${weightText} · ${w.brakeShoe||''} · ${w.unNr?('UN '+w.unNr):w.state||''}</div></div>
    <button class="btn danger" onclick="removeWagon(${i})">×</button>`;
   $('list').appendChild(d)
  });
@@ -656,20 +657,66 @@ async function makeOCRVariants(file){
  return variants;
 }
 
+async function canvasSlices(canvas){
+ const slices=[canvas];
+ const parts=4;
+ for(let i=0;i<parts;i++){
+  const overlap=Math.floor(canvas.height*0.02);
+  const baseH=Math.floor(canvas.height/parts);
+  const y=Math.max(0,Math.floor(canvas.height*i/parts)-overlap);
+  const bottom=Math.min(canvas.height,Math.floor(canvas.height*(i+1)/parts)+overlap);
+  const h=bottom-y;
+  const c=document.createElement('canvas');
+  c.width=canvas.width;c.height=h;
+  c.getContext('2d').drawImage(canvas,0,y,canvas.width,h,0,0,c.width,h);
+  slices.push(c);
+ }
+ return slices;
+}
+
 async function recognizeWagonList(file,progress){
  const variants=await makeOCRVariants(file);
- let best=[];
- for(let i=0;i<variants.length;i++){
-  if(progress)progress(i,variants.length);
-  const r=await Tesseract.recognize(variants[i],'eng',{
-   tessedit_char_whitelist:'0123456789- ',
-   preserve_interword_spaces:'1'
-  });
-  const hits=extractWagonsByLines(r.data.text||'');
-  if(hits.length>best.length)best=hits;
-  if(best.length>=3)break;
+ const byNumber=new Map();
+ let step=0;
+ const totalSteps=variants.length*5;
+
+ for(let vi=0;vi<variants.length;vi++){
+  const segments=await canvasSlices(variants[vi]);
+  for(const seg of segments){
+   if(progress)progress(step,totalSteps);
+   step++;
+   const r=await Tesseract.recognize(seg,'eng',{
+    tessedit_char_whitelist:'0123456789- ',
+    preserve_interword_spaces:'1',
+    tessedit_pageseg_mode:'6'
+   });
+   for(const hit of extractWagonsByLines(r.data.text||'')){
+    const old=byNumber.get(hit.digits);
+    if(!old || hit.score<old.score)byNumber.set(hit.digits,hit);
+   }
+  }
  }
- return best;
+
+ // A final normal-orientation pass is used to preserve the visible row order.
+ const ordered=[];
+ try{
+  const r=await Tesseract.recognize(variants[0],'eng',{
+   tessedit_char_whitelist:'0123456789- ',
+   preserve_interword_spaces:'1',
+   tessedit_pageseg_mode:'6'
+  });
+  for(const hit of extractWagonsByLines(r.data.text||'')){
+   if(byNumber.has(hit.digits) && !ordered.some(x=>x.digits===hit.digits)){
+    ordered.push(byNumber.get(hit.digits));
+   }
+  }
+ }catch{}
+
+ // Add extra hits from cropped passes. This catches rows missed in the full image.
+ for(const hit of byNumber.values()){
+  if(!ordered.some(x=>x.digits===hit.digits))ordered.push(hit);
+ }
+ return ordered;
 }
 function addScannedWagonToTrain(d){
  const found=db.find(x=>norm(x.number)===d);
@@ -678,7 +725,7 @@ function addScannedWagonToTrain(d){
  train.push({
   ...found,
   state:'beladen',
-  load:0,total:0,
+  load:0,total:n(found.tare)||0,
   effectiveBrakes:n(found.axles)||4,
   ridGef:'',unNr:'',gefZettel:'',
   special:'0',vmax:100,routeClass:'D',
@@ -694,7 +741,7 @@ $('listPhoto').onchange=async e=>{
  res.innerHTML='';
  try{
   const matches=await recognizeWagonList(file,(i,total)=>{
-   box.textContent=i===0?'Wagenliste wird zeilenweise erkannt …':'Wagenliste wird erneut geprüft ('+(i+1)+'/'+total+') …';
+   box.textContent='Wagenliste wird gründlich erkannt ('+(i+1)+'/'+total+') …';
   });
   const candidates=matches.map(x=>x.digits);
   if(!candidates.length){
@@ -734,7 +781,7 @@ $('photo').onchange=async e=>{
  $('status').style.display='block';$('status').className='status';$('status').textContent='Foto wird erkannt …';
  try{
   const matches=await recognizeWagonList(file,(i,total)=>{
-   $('status').textContent=i===0?'Foto wird zeilenweise erkannt …':'Foto wird erneut geprüft ('+(i+1)+'/'+total+') …';
+   $('status').textContent='Foto wird gründlich erkannt ('+(i+1)+'/'+total+') …';
   });
 
   if(matches.length===1){
