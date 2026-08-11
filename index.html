@@ -44,9 +44,10 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
 .preview{display:none;width:100%;max-height:220px;object-fit:cover;border-radius:10px;margin-top:8px}
 .wagon{display:grid;grid-template-columns:30px 1fr auto;gap:8px;align-items:center;border:1px solid var(--line);border-radius:11px;padding:9px;margin-bottom:7px;background:#fff}
 .wagonTools{display:flex;gap:5px;align-items:center}
-.mini{min-width:34px;padding:7px 8px;border-radius:9px;border:1px solid var(--line);background:#eef5f3;color:var(--p);font-weight:900}
-.mini:disabled{opacity:.35}
-.pos.moveable{cursor:pointer;border:1px solid #d7e5e1}
+.wagon.draggable{touch-action:none;user-select:none;-webkit-user-select:none}
+.wagon.dragging{opacity:.65;transform:scale(.99);box-shadow:0 8px 18px rgba(0,0,0,.14)}
+.wagon.dropTarget{outline:3px solid rgba(18,63,62,.18)}
+.pos.moveable{cursor:grab;border:1px solid #d7e5e1}
 .quickRow{display:grid;grid-template-columns:1fr auto auto;gap:7px;align-items:end}
 .quickNext{white-space:nowrap}
 .trainOrderTools{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px}
@@ -172,7 +173,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
 
  <div class="card">
   <div class="title"><div class="n">3</div><h2>Wagen im aktuellen Zug</h2></div>
-  <div class="trainOrderTools"><button class="btn secondary" id="reverseTrain">↕ Ganze Reihenfolge umkehren</button></div>
+  <div class="trainOrderTools"><button class="btn secondary" id="reverseTrain">↕ Ganze Reihenfolge umkehren</button><span class="note">Wagen gedrückt halten und mit dem Finger an die gewünschte Position ziehen.</span></div>
   <div id="list"></div><div id="empty" class="empty">Noch keine Wagen im Zug.</div>
   <div class="summary">
    <div class="stat">Wagen<b id="sCars">0</b></div><div class="stat">Radsätze<b id="sAx">0</b></div><div class="stat">Länge<b><span id="sLen">0.00</span> m</b></div>
@@ -515,32 +516,74 @@ $('add').onclick=()=>{
 function renderTrain(){
  $('list').innerHTML='';$('empty').style.display=train.length?'none':'block';
  train.forEach((w,i)=>{
-  const d=document.createElement('div');d.className='wagon';
+  const d=document.createElement('div');d.className='wagon draggable';d.dataset.index=i;
   const weightText=n(w.total)>0?('Gesamt '+Number(w.total).toFixed(2)+' t'):('Tara '+Number(w.tare||0).toFixed(2)+' t');
   d.innerHTML=`<button class="pos moveable" onclick="moveWagonPrompt(${i})" title="Position ändern">${i+1}</button>
    <div><div class="wn">${w.number}</div>
    <div class="meta">${w.axles||''} Rads. · ${w.length||0} m · ${weightText} · ${w.brakeShoe||''} · ${w.unNr?('UN '+w.unNr):w.state||''}</div></div>
    <div class="wagonTools">
-    <button class="mini" onclick="moveWagon(${i},-1)" ${i===0?'disabled':''}>↑</button>
-    <button class="mini" onclick="moveWagon(${i},1)" ${i===train.length-1?'disabled':''}>↓</button>
     <button class="btn danger" onclick="removeWagon(${i})">×</button>
    </div>`;
-  $('list').appendChild(d)
+  $('list').appendChild(d);
+  bindDrag(d);
  });
  const s=k=>train.reduce((a,w)=>a+n(w[k]),0);
  $('sCars').textContent=train.length;$('sAx').textContent=s('axles');$('sLen').textContent=s('length').toFixed(2);
  $('sTare').textContent=s('tare').toFixed(2);$('sLoad').textContent=s('load').toFixed(2);$('sTotal').textContent=s('total').toFixed(2);
 }
 
+let dragState=null;
+
+function bindDrag(el){
+ let startY=0,startIndex=0,moved=false;
+ const begin=(clientY)=>{
+  startY=clientY;startIndex=Number(el.dataset.index);moved=false;
+  dragState={el,startIndex,currentIndex:startIndex};
+  el.classList.add('dragging');
+ };
+ const move=(clientY)=>{
+  if(!dragState)return;
+  if(Math.abs(clientY-startY)>8)moved=true;
+  const rows=[...document.querySelectorAll('#list .wagon')];
+  rows.forEach(r=>r.classList.remove('dropTarget'));
+  let target=rows.length-1;
+  for(let i=0;i<rows.length;i++){
+   const r=rows[i].getBoundingClientRect();
+   if(clientY<r.top+r.height/2){target=i;break}
+  }
+  dragState.currentIndex=target;
+  rows[target]?.classList.add('dropTarget');
+ };
+ const finish=()=>{
+  if(!dragState)return;
+  document.querySelectorAll('#list .wagon').forEach(r=>r.classList.remove('dropTarget'));
+  el.classList.remove('dragging');
+  if(moved){
+   const from=dragState.startIndex,to=dragState.currentIndex;
+   if(from!==to){
+    const [w]=train.splice(from,1);
+    train.splice(to,0,w);
+    persistTrainOrder();
+   }
+  }
+  dragState=null;
+ };
+
+ el.addEventListener('touchstart',e=>begin(e.touches[0].clientY),{passive:true});
+ el.addEventListener('touchmove',e=>{move(e.touches[0].clientY);e.preventDefault()},{passive:false});
+ el.addEventListener('touchend',finish);
+ el.addEventListener('touchcancel',finish);
+
+ el.draggable=true;
+ el.addEventListener('dragstart',e=>{begin(e.clientY);e.dataTransfer.effectAllowed='move'});
+ el.addEventListener('dragover',e=>{e.preventDefault();move(e.clientY)});
+ el.addEventListener('drop',e=>{e.preventDefault();finish()});
+ el.addEventListener('dragend',finish);
+}
+
 function persistTrainOrder(){
  saveTrain();renderTrain();updateDerived();
 }
-window.moveWagon=(i,dir)=>{
- const j=i+dir;
- if(j<0||j>=train.length)return;
- [train[i],train[j]]=[train[j],train[i]];
- persistTrainOrder();
-};
 window.moveWagonPrompt=i=>{
  const current=i+1;
  const raw=prompt(`Wagen steht aktuell auf Position ${current}.\nNeue Position (1–${train.length}):`,String(current));
@@ -832,61 +875,85 @@ async function recognizeWagonList(file,progress){
  const variants=await makeOCRVariants(file);
  const normal=variants[0];
  const byNumber=new Map();
-
- // 1) Primary method: detect every physical table row and OCR it separately.
- // This preserves the order from top to bottom and greatly improves long lists.
- const bands=detectTableRows(normal);
+ const orderedHints=new Map();
  let step=0;
- const rowSteps=bands.length;
- const totalSteps=Math.max(1,rowSteps)+8+2;
 
+ const addHit=(hit,order)=>{
+  if(!hit)return;
+  const old=byNumber.get(hit.digits);
+  const item={...hit,order};
+  if(!old || hit.score<old.score)byNumber.set(hit.digits,item);
+  if(!orderedHints.has(hit.digits) || order<orderedHints.get(hit.digits))orderedHints.set(hit.digits,order);
+ };
+
+ // 1) Detect physical rows and OCR each row with several PSM modes.
+ const bands=detectTableRows(normal);
+ const totalSteps=Math.max(1,bands.length*2)+16+6;
  if(bands.length>=3){
   for(let i=0;i<bands.length;i++){
-   if(progress)progress(step++,totalSteps);
    const b=bands[i];
+   const row=cropCanvas(normal,Math.round(normal.width*0.015),Math.max(0,b.y-4),
+    Math.round(normal.width*0.97),Math.min(normal.height-b.y+4,b.h+8));
 
-   // Use almost the full row, but trim extreme edges/borders.
-   const row=cropCanvas(
-    normal,
-    Math.round(normal.width*0.02),
-    Math.max(0,b.y-3),
-    Math.round(normal.width*0.96),
-    Math.min(normal.height-b.y+3,b.h+6)
-   );
-
-   const hit=await recognizeSingleRow(row);
-   if(hit){
-    const old=byNumber.get(hit.digits);
-    const item={...hit,order:b.y};
-    if(!old || hit.score<old.score)byNumber.set(hit.digits,item);
+   for(const psm of ['7','6']){
+    if(progress)progress(step++,totalSteps);
+    const r=await Tesseract.recognize(row,'eng',{
+     tessedit_char_whitelist:'0123456789- ',
+     preserve_interword_spaces:'1',
+     tessedit_pageseg_mode:psm
+    });
+    for(const hit of extractWagonsByLines(r.data.text||'')) addHit(hit,b.y+i*0.001);
    }
   }
  }
 
- // 2) Fallback: overlapping horizontal sections on normal orientation.
- const segmented=await fallbackSegmentScan(normal,progress,step,totalSteps);
- step+=8;
- for(const hit of segmented){
-  const old=byNumber.get(hit.digits);
-  if(!old || hit.score<old.score)byNumber.set(hit.digits,hit);
- }
-
- // 3) Rotated full-image checks only to recover missing numbers.
- // They never determine the main ordering.
- for(let vi=1;vi<variants.length;vi++){
-  if(progress)progress(step++,totalSteps);
-  const r=await Tesseract.recognize(variants[vi],'eng',{
-   tessedit_char_whitelist:'0123456789- ',
-   preserve_interword_spaces:'1',
-   tessedit_pageseg_mode:'6'
-  });
-  for(const hit of extractWagonsByLines(r.data.text||'')){
-   if(!byNumber.has(hit.digits))byNumber.set(hit.digits,{...hit,order:999999+byNumber.size});
+ // 2) Overlapping full-width slices for rows missed by rule detection.
+ const parts=8;
+ for(let i=0;i<parts;i++){
+  const overlap=Math.floor(normal.height*0.025);
+  const y=Math.max(0,Math.floor(normal.height*i/parts)-overlap);
+  const bottom=Math.min(normal.height,Math.floor(normal.height*(i+1)/parts)+overlap);
+  const seg=cropCanvas(normal,0,y,normal.width,bottom-y);
+  for(const psm of ['6','11']){
+   if(progress)progress(step++,totalSteps);
+   const r=await Tesseract.recognize(seg,'eng',{
+    tessedit_char_whitelist:'0123456789- ',
+    preserve_interword_spaces:'1',
+    tessedit_pageseg_mode:psm
+   });
+   const hits=extractWagonsByLines(r.data.text||'');
+   hits.forEach((hit,j)=>addHit(hit,y+j*18));
   }
  }
 
- // Sort primarily by detected physical row position.
- return [...byNumber.values()].sort((a,b)=>a.order-b.order);
+ // 3) Full normal image in multiple modes to recover faint rows.
+ for(const psm of ['6','11','12']){
+  if(progress)progress(step++,totalSteps);
+  const r=await Tesseract.recognize(normal,'eng',{
+   tessedit_char_whitelist:'0123456789- ',
+   preserve_interword_spaces:'1',
+   tessedit_pageseg_mode:psm
+  });
+  const hits=extractWagonsByLines(r.data.text||'');
+  hits.forEach((hit,j)=>addHit(hit,j*20));
+ }
+
+ // 4) Rotated full image only for recovery; do not override normal order.
+ for(let vi=1;vi<variants.length;vi++){
+  for(const psm of ['6','11']){
+   if(progress)progress(step++,totalSteps);
+   const r=await Tesseract.recognize(variants[vi],'eng',{
+    tessedit_char_whitelist:'0123456789- ',
+    preserve_interword_spaces:'1',
+    tessedit_pageseg_mode:psm
+   });
+   for(const hit of extractWagonsByLines(r.data.text||'')){
+    if(!byNumber.has(hit.digits))addHit(hit,999999+byNumber.size);
+   }
+  }
+ }
+
+ return [...byNumber.values()].sort((a,b)=>(orderedHints.get(a.digits)??a.order)-(orderedHints.get(b.digits)??b.order));
 }
 function addScannedWagonToTrain(d){
  const found=db.find(x=>norm(x.number)===d);
