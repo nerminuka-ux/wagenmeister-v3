@@ -112,6 +112,16 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
   <img id="preview" class="preview">
   <div id="status" class="status"></div>
 
+  <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
+   <label>Komplette Wagenliste</label>
+   <div class="actions">
+    <button class="btn secondary" id="scanListBtn">📷 Wagenliste erkennen</button>
+    <input id="listPhoto" type="file" accept="image/*" capture="environment" hidden>
+   </div>
+   <div id="listScanStatus" class="status"></div>
+   <div id="listScanResults" style="margin-top:8px"></div>
+  </div>
+
   <div id="drawer" class="drawer">
    <div class="grid3" style="margin-top:10px">
     <div><label>Radsätze</label><input id="axles" type="number" inputmode="numeric"></div>
@@ -146,15 +156,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
     <button class="btn secondary" id="saveMaster">Stammdaten speichern</button>
    </div>
    <p class="note">Ladungsgewicht, Gesamtgewicht, RID-Angaben, Zielbahnhof und Bemerkungen gelten nur für den aktuellen Zug. Sie werden nicht als feste Stammdaten gespeichert.</p>
-   <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
-    <label>Komplette Wagenliste fotografieren / auswählen</label>
-    <div class="actions">
-     <button class="btn secondary" id="scanListBtn">📷 Wagenliste erkennen</button>
-     <input id="listPhoto" type="file" accept="image/*" capture="environment" hidden>
-    </div>
-    <div id="listScanStatus" class="status"></div>
-    <div id="listScanResults" style="margin-top:8px"></div>
-   </div>
+
   </div>
  </div>
 
@@ -560,52 +562,92 @@ $('refreshDB').onclick=async()=>{
 
 $('scanListBtn').onclick=()=>$('listPhoto').click();
 
-function extractUICCandidates(raw){
- const cleaned=(raw||'').toUpperCase()
-  .replace(/[OQ]/g,'0').replace(/[IL|!]/g,'1');
- const hits=[];
- const add=d=>{if(d.length===12 && uicValid(d) && !hits.includes(d))hits.push(d)};
+function levenshtein(a,b){
+ const m=a.length,n=b.length,dp=Array.from({length:m+1},()=>Array(n+1).fill(0));
+ for(let i=0;i<=m;i++)dp[i][0]=i;
+ for(let j=0;j<=n;j++)dp[0][j]=j;
+ for(let i=1;i<=m;i++)for(let j=1;j<=n;j++){
+  dp[i][j]=Math.min(
+   dp[i-1][j]+1,
+   dp[i][j-1]+1,
+   dp[i-1][j-1]+(a[i-1]===b[j-1]?0:1)
+  );
+ }
+ return dp[m][n];
+}
 
- for(const line of cleaned.split(/\r?\n/)){
-  const matches=line.match(/\d{2}\D{0,4}\d{2}\D{0,4}\d{4}\D{0,4}\d{3}\D{0,4}\d/g)||[];
-  for(const m of matches)add(norm(m));
+function digitWindows(line){
+ const digits=(line||'').toUpperCase()
+  .replace(/[OQ]/g,'0').replace(/[IL|!]/g,'1')
+  .replace(/\D/g,'');
+ const out=[];
+ for(const size of [11,12,13]){
+  for(let i=0;i+size<=digits.length;i++)out.push(digits.slice(i,i+size));
+ }
+ return [...new Set(out)];
+}
 
-  // Tabellen-Zeilennummern dürfen mitgelesen werden:
-  // jedes 12-stellige Fenster wird über die UIC-Prüfziffer geprüft.
-  const digits=line.replace(/\D/g,'');
-  for(let i=0;i+12<=digits.length;i++) add(digits.slice(i,i+12));
+function matchLineToDatabase(line){
+ const windows=digitWindows(line);
+ if(!windows.length)return null;
+
+ // First: exact UIC-valid database hit.
+ for(const w of windows){
+  if(w.length===12 && uicValid(w)){
+   const exact=db.find(x=>norm(x.number)===w);
+   if(exact)return {digits:w,score:0,record:exact};
+  }
  }
 
- // Falls OCR eine Nummer auf zwei Textzeilen trennt.
- const allDigits=cleaned.replace(/\D/g,'');
- for(let i=0;i+12<=allDigits.length;i++) add(allDigits.slice(i,i+12));
+ // Second: tolerate small OCR mistakes, but only if the best database match is clear.
+ let best=null, second=99;
+ for(const rec of db){
+  const target=norm(rec.number);
+  for(const w of windows){
+   const dist=levenshtein(w,target);
+   if(!best || dist<best.score){
+    second=best?best.score:second;
+    best={digits:target,score:dist,record:rec};
+   }else if(target!==best.digits && dist<second){
+    second=dist;
+   }
+  }
+ }
+ if(best && best.score<=2 && second>best.score)return best;
+ return null;
+}
+
+function extractWagonsByLines(raw){
+ const hits=[];
+ for(const line of (raw||'').split(/\r?\n/)){
+  const m=matchLineToDatabase(line);
+  if(m && !hits.some(x=>x.digits===m.digits))hits.push(m);
+ }
  return hits;
 }
 
 async function makeOCRVariants(file){
  const img=await new Promise((resolve,reject)=>{
-  const im=new Image();
-  im.onload=()=>resolve(im); im.onerror=reject;
+  const im=new Image();im.onload=()=>resolve(im);im.onerror=reject;
   im.src=URL.createObjectURL(file);
  });
  const variants=[];
  for(const angle of [0,90,-90]){
   const swap=Math.abs(angle)===90;
-  const maxSide=2200;
-  const scale=Math.min(2.2,maxSide/Math.max(img.width,img.height));
+  const maxSide=2400;
+  const scale=Math.min(2.5,maxSide/Math.max(img.width,img.height));
   const w=Math.max(1,Math.round(img.width*scale));
   const h=Math.max(1,Math.round(img.height*scale));
   const c=document.createElement('canvas');
-  c.width=swap?h:w; c.height=swap?w:h;
+  c.width=swap?h:w;c.height=swap?w:h;
   const x=c.getContext('2d',{willReadFrequently:true});
-  x.save(); x.translate(c.width/2,c.height/2);
-  x.rotate(angle*Math.PI/180);
-  x.drawImage(img,-w/2,-h/2,w,h); x.restore();
+  x.save();x.translate(c.width/2,c.height/2);x.rotate(angle*Math.PI/180);
+  x.drawImage(img,-w/2,-h/2,w,h);x.restore();
 
   const imd=x.getImageData(0,0,c.width,c.height),d=imd.data;
   for(let i=0;i<d.length;i+=4){
    const g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
-   const v=Math.max(0,Math.min(255,(g-128)*1.55+128));
+   const v=Math.max(0,Math.min(255,(g-128)*1.8+128));
    d[i]=d[i+1]=d[i+2]=v;
   }
   x.putImageData(imd,0,0);
@@ -616,17 +658,18 @@ async function makeOCRVariants(file){
 
 async function recognizeWagonList(file,progress){
  const variants=await makeOCRVariants(file);
- const all=[];
+ let best=[];
  for(let i=0;i<variants.length;i++){
   if(progress)progress(i,variants.length);
   const r=await Tesseract.recognize(variants[i],'eng',{
    tessedit_char_whitelist:'0123456789- ',
    preserve_interword_spaces:'1'
   });
-  for(const d of extractUICCandidates(r.data.text||'')) if(!all.includes(d))all.push(d);
-  if(i===0 && all.length)break;
+  const hits=extractWagonsByLines(r.data.text||'');
+  if(hits.length>best.length)best=hits;
+  if(best.length>=3)break;
  }
- return all;
+ return best;
 }
 function addScannedWagonToTrain(d){
  const found=db.find(x=>norm(x.number)===d);
@@ -650,9 +693,10 @@ $('listPhoto').onchange=async e=>{
  box.style.display='block';box.className='status';box.textContent='Wagenliste wird erkannt …';
  res.innerHTML='';
  try{
-  const candidates=await recognizeWagonList(file,(i,total)=>{
-   box.textContent=i===0?'Wagenliste wird erkannt …':'Wagenliste wird erneut geprüft ('+(i+1)+'/'+total+') …';
+  const matches=await recognizeWagonList(file,(i,total)=>{
+   box.textContent=i===0?'Wagenliste wird zeilenweise erkannt …':'Wagenliste wird erneut geprüft ('+(i+1)+'/'+total+') …';
   });
+  const candidates=matches.map(x=>x.digits);
   if(!candidates.length){
    box.className='status bad';
    box.textContent='Keine gültige UIC-Wagennummer sicher erkannt. Foto bitte vollständig und möglichst scharf aufnehmen.';
@@ -686,16 +730,34 @@ $('listPhoto').onchange=async e=>{
 $('scanBtn').onclick=()=>$('photo').click();
 $('photo').onchange=async e=>{
  const file=e.target.files?.[0];if(!file)return;
- $('preview').src=URL.createObjectURL(file);$('preview').style.display='block';$('status').style.display='block';$('status').textContent='Nummer wird erkannt …';
+ $('preview').src=URL.createObjectURL(file);$('preview').style.display='block';
+ $('status').style.display='block';$('status').className='status';$('status').textContent='Foto wird erkannt …';
  try{
-  const r=await Tesseract.recognize(file,'eng');const raw=(r.data.text||'').toUpperCase().replace(/[OQ]/g,'0').replace(/[IL|]/g,'1');
-  let best='';for(const line of raw.split(/\r?\n/)){const m=line.match(/\d{2}\D*\d{2}\D*\d{4}\D*\d{3}\D*\d/);if(m&&norm(m[0]).length===12){best=norm(m[0]);break}}
-  if(best){
-   $('wagonSearch').value=fmt(best);checkUIC();
-   if(uicValid(best)){loadCurrent(best);$('status').textContent='Gefunden: '+fmt(best)+' – Prüfziffer stimmt.'}
-   else $('status').textContent='Nummer erkannt, aber Prüfziffer stimmt nicht. Bitte kontrollieren.';
-  }else $('status').textContent='Nicht sicher erkannt. Bitte näher fotografieren.';
- }catch{$('status').textContent='Erkennung nicht verfügbar.'}
+  const matches=await recognizeWagonList(file,(i,total)=>{
+   $('status').textContent=i===0?'Foto wird zeilenweise erkannt …':'Foto wird erneut geprüft ('+(i+1)+'/'+total+') …';
+  });
+
+  if(matches.length===1){
+   const d=matches[0].digits;
+   $('wagonSearch').value=fmt(d);checkUIC();loadCurrent(d);
+   $('status').className='status good';
+   $('status').textContent='✓ Gefunden: '+fmt(d)+' · Datenbanktreffer';
+  }else if(matches.length>1){
+   $('wagonSearch').value='';$('uicStatus').style.display='none';$('drawer').classList.remove('open');
+   let added=0;
+   for(const m of matches)if(addScannedWagonToTrain(m.digits))added++;
+   saveTrain();renderTrain();updateDerived();
+   $('status').className='status good';
+   $('status').textContent='✓ '+matches.length+' Wagen erkannt · '+added+' in den aktuellen Zug übernommen.';
+  }else{
+   $('wagonSearch').value='';$('uicStatus').style.display='none';$('drawer').classList.remove('open');
+   $('status').className='status bad';
+   $('status').textContent='Keine Wagennummer sicher erkannt. Das Foto wurde nicht übernommen.';
+  }
+ }catch{
+  $('status').className='status bad';
+  $('status').textContent='Erkennung nicht verfügbar.';
+ }
 };
 
 window.printView=id=>{
