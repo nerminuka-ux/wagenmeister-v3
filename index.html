@@ -254,7 +254,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
 </section>
 
 <section id="datenbank" class="view">
- <div class="card"><div class="title"><div class="n">1</div><h2>Kesselwagen-Datenbank</h2></div><input id="filter" inputmode="numeric" placeholder="Wagennummer suchen"><div id="dbList"></div></div>
+ <div class="card"><div class="title"><div class="n">1</div><h2>Kesselwagen-Datenbank <span id="dbCount" style="font-size:12px;color:var(--muted)"></span></h2></div><input id="filter" inputmode="numeric" placeholder="Wagennummer suchen"><div id="dbList"></div></div>
  <div class="card"><div class="title"><div class="n">2</div><h2>Daten sichern</h2></div><div class="actions"><button class="btn primary" id="export">Export</button><button class="btn secondary" id="importBtn">Import</button><input id="importFile" type="file" accept=".json,application/json" hidden></div><p class="note">Doppelte Wagennummern werden beim Import automatisch zusammengeführt. Wagennummern mit ungültiger UIC-Prüfziffer werden abgelehnt.</p></div>
 </section>
 
@@ -350,15 +350,47 @@ $('wagonSearch').oninput=e=>{
  if(norm(e.target.value).length===12 && uicValid(e.target.value))loadCurrent(e.target.value);
 };
 
+function pickField(w,...keys){
+ for(const k of keys){
+  if(w && w[k]!==null && w[k]!==undefined && w[k]!=='') return w[k];
+ }
+ return '';
+}
 function loadCurrent(no){
- const w=db.find(x=>norm(x.number)===norm(no))||{number:fmt(no),type:'Kesselwagen',axles:4,brakeShoe:'K'};
+ const found=db.find(x=>norm(x.number)===norm(no));
+ const w=found||{number:fmt(no),type:'Kesselwagen',axles:4,brakeShoe:'K'};
  $('drawer').classList.add('open');
- $('axles').value=w.axles??4;$('length').value=w.length??'';$('tare').value=w.tare??'';
- $('shoe').value=w.brakeShoe??'K';$('bp').value=w.brakeP??'';$('bg').value=w.brakeG??'';
- $('hbr').value=w.handBrake??'';
- $('load').value='';$('total').value='';$('effectiveBrakes').value=w.axles??4;
- $('ridGef').value='';$('unNr').value='';$('gefZettel').value='';$('special').value='0';
- $('vmax').value=100;$('routeClass').value='D';$('remarks').value='';
+
+ $('axles').value=pickField(w,'axles','radsatz','radsätze')||4;
+ $('length').value=pickField(w,'length','laenge','lengthM','lengthOverBuffers');
+ $('tare').value=pickField(w,'tare','tara','eigengewicht','emptyWeight');
+ $('shoe').value=pickField(w,'brakeShoe','shoe','bremssohle')||'K';
+ $('bp').value=pickField(w,'brakeP','bp','bremsgewichtP');
+ $('bg').value=pickField(w,'brakeG','bg','bremsgewichtG');
+ $('hbr').value=pickField(w,'handBrake','hbr','festhaltekraft');
+
+ $('load').value='';
+ $('total').value='';
+ $('effectiveBrakes').value=pickField(w,'effectiveBrakes','wirksameBremsen') || (pickField(w,'axles')||4);
+ $('ridGef').value='';
+ $('unNr').value='';
+ $('gefZettel').value='';
+ $('special').value='0';
+ $('vmax').value=100;
+ $('routeClass').value='D';
+ $('remarks').value='';
+
+ if(found){
+   $('uicStatus').style.display='block';
+   $('uicStatus').className='status good';
+   const parts=[];
+   if($('length').value!=='') parts.push('Länge '+$('length').value+' m');
+   if($('tare').value!=='') parts.push('Tara '+$('tare').value+' t');
+   if($('bp').value!=='') parts.push('P '+$('bp').value);
+   if($('bg').value!=='') parts.push('G '+$('bg').value);
+   if($('hbr').value!=='') parts.push('Hbr '+$('hbr').value+' kN');
+   $('uicStatus').textContent='✓ UIC-Prüfziffer stimmt · Datenbanktreffer'+(parts.length?' · '+parts.join(' · '):'');
+ }
 }
 
 document.querySelectorAll('[data-state]').forEach(b=>b.onclick=()=>{
@@ -423,6 +455,7 @@ window.removeWagon=i=>{train.splice(i,1);saveTrain();renderTrain();updateDerived
 $('clear').onclick=()=>{if(confirm('Zug wirklich leeren?')){train=[];saveTrain();renderTrain();updateDerived()}}
 
 function renderDB(){
+ $('dbCount').textContent='('+db.length+')';
  const q=norm($('filter').value);$('dbList').innerHTML='';
  const rows=db.filter(w=>!q||norm(w.number).includes(q));
  if(!rows.length){$('dbList').innerHTML='<div class="empty">Keine Wagen gefunden.</div>';return}
@@ -516,7 +549,22 @@ window.printView=id=>{
   fileDB=await r.json();
  }catch{fileDB=[]}
  try{localDB=JSON.parse(localStorage.getItem('wm_v3_db')||'[]')||[]}catch{localDB=[]}
- db=dedupe([...(Array.isArray(localDB)?localDB:[]), ...(Array.isArray(fileDB)?fileDB:[])]);
+ function normalizeRecord(w){
+  return {
+   ...w,
+   number: w.number,
+   axles: pickField(w,'axles','radsatz','radsätze'),
+   length: pickField(w,'length','laenge','lengthM','lengthOverBuffers'),
+   tare: pickField(w,'tare','tara','eigengewicht','emptyWeight'),
+   brakeShoe: pickField(w,'brakeShoe','shoe','bremssohle'),
+   brakeP: pickField(w,'brakeP','bp','bremsgewichtP'),
+   brakeG: pickField(w,'brakeG','bg','bremsgewichtG'),
+   handBrake: pickField(w,'handBrake','hbr','festhaltekraft')
+  };
+ }
+ fileDB=(Array.isArray(fileDB)?fileDB:[]).map(normalizeRecord);
+ localDB=(Array.isArray(localDB)?localDB:[]).map(normalizeRecord);
+ db=dedupe([...localDB,...fileDB]);
  saveDB();
  try{train=JSON.parse(localStorage.getItem('wm_v3_train')||'[]')}catch{train=[]}
  renderDB();renderTrain();updateDerived();
