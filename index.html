@@ -1177,38 +1177,89 @@ $('photo').onchange=async e=>{
  }
 };
 
-let activePrintView=null;
+function buildPrintableDocument(id){
+ const source=$(id);
+ if(!source)return '';
+ const clone=source.cloneNode(true);
 
-function clearPrintMode(){
- document.querySelectorAll('.view').forEach(v=>v.classList.remove('printing'));
- activePrintView=null;
+ // Remove buttons/navigation-only controls from print copy.
+ clone.querySelectorAll('.no-print').forEach(el=>el.remove());
+
+ const title=id==='wagenliste'?'Wagenliste':'Dokumente';
+ return `<!doctype html>
+ <html lang="de">
+ <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${title}</title>
+  <style>
+   *{box-sizing:border-box}
+   html,body{margin:0;padding:0;background:#fff;color:#111;font-family:Arial,sans-serif}
+   body{padding:8mm}
+   .view{display:block!important}
+   .card{border:0!important;box-shadow:none!important;margin:0 0 8mm 0!important;padding:0!important;background:#fff!important}
+   .title{display:flex;align-items:center;gap:8px;margin:0 0 8px 0}
+   .title .n{display:none}
+   .title h2{font-size:16px;margin:0}
+   .pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+   .pill{border:1px solid #bbb;border-radius:10px;padding:5px 7px;font-size:10px}
+   .docSummary{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:8px 0}
+   .docStat{border:1px solid #bbb;border-radius:8px;padding:6px;text-align:center;font-size:9px}
+   .docStat b{display:block;font-size:12px;margin-top:2px}
+   .validation{border:1px solid #bbb;border-radius:8px;padding:6px;margin:7px 0;font-size:10px}
+   .sheet-wrap{overflow:visible!important;border:0!important;width:100%!important}
+   table{border-collapse:collapse;width:100%}
+   .sheet{font-size:6.6px!important;min-width:0!important;width:100%!important}
+   .sheet th,.sheet td{border:1px solid #777;padding:2px 2.5px;text-align:center;white-space:nowrap}
+   .sheet .left{text-align:left}
+   .sheet .head1{font-size:10px;font-weight:700;background:#eee}
+   .doc{border:1px solid #888;padding:8px;margin-bottom:7mm;break-inside:avoid-page}
+   .doc-head{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;border-bottom:2px solid #111;padding-bottom:6px;margin-bottom:7px}
+   .doc-title{font-size:18px;font-weight:800}
+   .doc-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px}
+   .doc-row{border-bottom:1px solid #bbb;padding:4px 0;font-size:10px}
+   .doc-row b{display:inline-block;min-width:120px}
+   .doc-actions{display:grid;gap:4px;margin-top:8px}
+   .check{display:flex;align-items:center;gap:5px;font-size:10px}
+   input[type=checkbox]{width:auto}
+   textarea,input,select{font:inherit}
+   .note{font-size:9px}
+   @page{size:A4 landscape;margin:7mm}
+  </style>
+ </head>
+ <body>${clone.outerHTML}</body>
+ </html>`;
 }
 
 window.printView=id=>{
- clearPrintMode();
- const view=$(id);
- if(!view)return;
- activePrintView=id;
- view.classList.add('printing');
  updateDerived();
+ const html=buildPrintableDocument(id);
+ if(!html)return alert('Druckansicht konnte nicht erstellt werden.');
 
- // iPhone/Safari needs time to lay out the print-only view before opening
- // the print dialog. Removing the class too early can create a blank page.
- requestAnimationFrame(()=>{
-  requestAnimationFrame(()=>{
-   setTimeout(()=>window.print(),120);
-  });
- });
+ const w=window.open('','_blank');
+ if(!w){
+  // Fallback for iPhone home-screen/PWA mode where popups can be blocked.
+  const blob=new Blob([html],{type:'text/html'});
+  const url=URL.createObjectURL(blob);
+  window.location.href=url;
+  return;
+ }
+
+ w.document.open();
+ w.document.write(html);
+ w.document.close();
+
+ const doPrint=()=>{
+  try{
+   w.focus();
+   w.print();
+  }catch(e){
+   alert('Druckdialog konnte nicht geöffnet werden.');
+  }
+ };
+ if(w.document.readyState==='complete')setTimeout(doPrint,350);
+ else w.addEventListener('load',()=>setTimeout(doPrint,350),{once:true});
 };
-
-window.addEventListener('afterprint',()=>{
- setTimeout(clearPrintMode,250);
-});
-
-// Fallback for browsers that do not fire afterprint reliably.
-window.addEventListener('focus',()=>{
- if(activePrintView)setTimeout(clearPrintMode,800);
-});
 
 (async()=>{
  try{
