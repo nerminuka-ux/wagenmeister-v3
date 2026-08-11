@@ -50,7 +50,6 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
 .dragGhost{position:fixed;left:14px;right:14px;z-index:9999;pointer-events:none;background:#fff;
  border:2px solid var(--p);border-radius:14px;padding:10px;box-shadow:0 18px 38px rgba(0,0,0,.30);
  transform:scale(1.035);opacity:.98}
-.dragPlaceholder{border:2px dashed rgba(18,63,62,.35)!important;background:#eef5f3!important}
 .pos.moveable{cursor:grab;border:1px solid #d7e5e1}
 .quickRow{display:grid;grid-template-columns:1fr auto auto;gap:7px;align-items:end}
 .quickNext{white-space:nowrap}
@@ -135,7 +134,6 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
    </div>
    <div id="listScanStatus" class="status"></div>
    <div id="listScanResults" style="margin-top:8px"></div>
-   <div id="missingPositions" style="margin-top:8px"></div>
   </div>
 
   <div id="drawer" class="drawer">
@@ -178,7 +176,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
 
  <div class="card">
   <div class="title"><div class="n">3</div><h2>Wagen im aktuellen Zug</h2></div>
-  <div class="trainOrderTools"><button class="btn secondary" id="reverseTrain">↕ Ganze Reihenfolge umkehren</button><span class="note">Wagen kurz gedrückt halten – er hebt sich sichtbar ab und schwebt unter dem Finger. Dann an die gewünschte Position ziehen.</span></div>
+  <div class="trainOrderTools"><button class="btn secondary" id="reverseTrain">↕ Ganze Reihenfolge umkehren</button><span class="note">Wagen kurz gedrückt halten und als schwebende Karte an die gewünschte Position ziehen.</span></div>
   <div id="list"></div><div id="empty" class="empty">Noch keine Wagen im Zug.</div>
   <div class="summary">
    <div class="stat">Wagen<b id="sCars">0</b></div><div class="stat">Radsätze<b id="sAx">0</b></div><div class="stat">Länge<b><span id="sLen">0.00</span> m</b></div>
@@ -526,9 +524,7 @@ function renderTrain(){
   d.innerHTML=`<button class="pos moveable" onclick="moveWagonPrompt(${i})" title="Position ändern">${i+1}</button>
    <div><div class="wn">${w.number}</div>
    <div class="meta">${w.axles||''} Rads. · ${w.length||0} m · ${weightText} · ${w.brakeShoe||''} · ${w.unNr?('UN '+w.unNr):w.state||''}</div></div>
-   <div class="wagonTools">
-    <button class="btn danger" onclick="removeWagon(${i})">×</button>
-   </div>`;
+   <div class="wagonTools"><button class="btn danger" onclick="removeWagon(${i})">×</button></div>`;
   $('list').appendChild(d);
   bindDrag(d);
  });
@@ -538,65 +534,43 @@ function renderTrain(){
 }
 
 let dragState=null;
-
 function bindDrag(el){
  let holdTimer=null,startY=0,moved=false,ghost=null;
-
  const createGhost=()=>{
   if(ghost)return;
   const r=el.getBoundingClientRect();
-  ghost=el.cloneNode(true);
-  ghost.classList.remove('dragging','dropTarget');
-  ghost.classList.add('dragGhost');
-  ghost.style.top=r.top+'px';
-  ghost.style.height=r.height+'px';
+  ghost=el.cloneNode(true);ghost.classList.remove('dragging','dropTarget');ghost.classList.add('dragGhost');
+  ghost.style.top=r.top+'px';ghost.style.height=r.height+'px';
   ghost.querySelectorAll('button').forEach(b=>b.style.pointerEvents='none');
-  document.body.appendChild(ghost);
-  el.classList.add('dragging');
+  document.body.appendChild(ghost);el.classList.add('dragging');
  };
-
- const begin=clientY=>{
-  startY=clientY;moved=false;
-  dragState={el,startIndex:Number(el.dataset.index),currentIndex:Number(el.dataset.index)};
+ const begin=y=>{
+  startY=y;moved=false;
+  dragState={startIndex:Number(el.dataset.index),currentIndex:Number(el.dataset.index)};
   holdTimer=setTimeout(createGhost,180);
  };
-
- const move=clientY=>{
+ const move=y=>{
   if(!dragState)return;
-  if(Math.abs(clientY-startY)>6)moved=true;
+  if(Math.abs(y-startY)>6)moved=true;
   if(!ghost){clearTimeout(holdTimer);createGhost();}
-  const gh=ghost.getBoundingClientRect().height;
-  ghost.style.top=(clientY-gh/2)+'px';
-
+  ghost.style.top=(y-ghost.getBoundingClientRect().height/2)+'px';
   const rows=[...document.querySelectorAll('#list .wagon.draggable')];
   rows.forEach(r=>r.classList.remove('dropTarget'));
-
   let target=dragState.startIndex;
   for(const r of rows){
    if(r===el)continue;
    const rr=r.getBoundingClientRect();
-   if(clientY<rr.top+rr.height/2){
-    target=Number(r.dataset.index);
-    r.classList.add('dropTarget');
-    break;
-   }else{
-    target=Number(r.dataset.index);
-   }
+   if(y<rr.top+rr.height/2){target=Number(r.dataset.index);r.classList.add('dropTarget');break}
+   target=Number(r.dataset.index);
   }
   dragState.currentIndex=target;
-
-  const edge=90;
-  if(clientY<edge)window.scrollBy({top:-18,behavior:'auto'});
-  else if(clientY>window.innerHeight-edge)window.scrollBy({top:18,behavior:'auto'});
+  if(y<90)window.scrollBy(0,-18);
+  else if(y>window.innerHeight-90)window.scrollBy(0,18);
  };
-
  const finish=()=>{
-  clearTimeout(holdTimer);
-  if(!dragState)return;
+  clearTimeout(holdTimer);if(!dragState)return;
   document.querySelectorAll('#list .wagon').forEach(r=>r.classList.remove('dropTarget'));
-  el.classList.remove('dragging');
-  ghost?.remove();
-
+  el.classList.remove('dragging');ghost?.remove();
   if(moved){
    let from=dragState.startIndex,to=dragState.currentIndex;
    if(from!==to){
@@ -608,40 +582,21 @@ function bindDrag(el){
   }
   dragState=null;
  };
-
  el.addEventListener('touchstart',e=>begin(e.touches[0].clientY),{passive:true});
  el.addEventListener('touchmove',e=>{move(e.touches[0].clientY);if(ghost)e.preventDefault()},{passive:false});
- el.addEventListener('touchend',finish);
- el.addEventListener('touchcancel',finish);
-
- el.draggable=true;
- el.addEventListener('dragstart',e=>{
-  begin(e.clientY);createGhost();e.dataTransfer.effectAllowed='move';
-  try{e.dataTransfer.setDragImage(new Image(),0,0)}catch{}
- });
- el.addEventListener('dragover',e=>{e.preventDefault();move(e.clientY)});
- el.addEventListener('drop',e=>{e.preventDefault();finish()});
- el.addEventListener('dragend',finish);
+ el.addEventListener('touchend',finish);el.addEventListener('touchcancel',finish);
 }
 
-function persistTrainOrder(){
- saveTrain();renderTrain();updateDerived();
-}
+function persistTrainOrder(){saveTrain();renderTrain();updateDerived();}
 window.moveWagonPrompt=i=>{
  const current=i+1;
  const raw=prompt(`Wagen steht aktuell auf Position ${current}.\nNeue Position (1–${train.length}):`,String(current));
  if(raw===null)return;
  const target=Math.max(1,Math.min(train.length,parseInt(raw,10)||current))-1;
  if(target===i)return;
- const [w]=train.splice(i,1);
- train.splice(target,0,w);
- persistTrainOrder();
+ const [w]=train.splice(i,1);train.splice(target,0,w);persistTrainOrder();
 };
-$('reverseTrain').onclick=()=>{
- if(train.length<2)return;
- train.reverse();
- persistTrainOrder();
-};
+$('reverseTrain').onclick=()=>{if(train.length<2)return;train.reverse();persistTrainOrder();};
 window.removeWagon=i=>{train.splice(i,1);persistTrainOrder()}
 $('clear').onclick=()=>{if(confirm('Zug wirklich leeren?')){train=[];persistTrainOrder()}}
 
@@ -842,92 +797,6 @@ function cropCanvas(src,x,y,w,h){
  return c;
 }
 
-function detectVerticalRules(canvas){
- const ctx=canvas.getContext('2d',{willReadFrequently:true});
- const {width:w,height:h}=canvas;
- const data=ctx.getImageData(0,0,w,h).data;
- const xs=[];
- const stepY=Math.max(1,Math.floor(h/900));
- for(let x=1;x<w-1;x+=2){
-  let dark=0,total=0;
-  for(let y=0;y<h;y+=stepY){
-   const i=(y*w+x)*4;
-   const g=(data[i]+data[i+1]+data[i+2])/3;
-   if(g<110)dark++;
-   total++;
-  }
-  if(dark/total>0.30)xs.push(x);
- }
- const rules=[];
- for(const x of xs){
-  const last=rules[rules.length-1];
-  if(last && x-last.end<=5){last.end=x;last.center=(last.start+last.end)/2;}
-  else rules.push({start:x,end:x,center:x});
- }
- return rules;
-}
-
-function detectPositionColumn(canvas){
- const rules=detectVerticalRules(canvas);
- if(rules.length<3)return {x:0,w:Math.round(canvas.width*0.09)};
- const gaps=[];
- for(let i=0;i<rules.length-1;i++){
-  const left=rules[i].center,right=rules[i+1].center;
-  gaps.push({left,right,w:right-left});
- }
- // Position column is the first narrow useful gap after the far-left border.
- const candidates=gaps.filter(g=>g.left>=0 && g.right<canvas.width*0.22 && g.w>12);
- candidates.sort((a,b)=>a.left-b.left);
- const g=candidates[0]||gaps[0];
- const pad=Math.max(1,Math.round(g.w*0.06));
- return {x:Math.max(0,Math.round(g.left)+pad),w:Math.max(18,Math.round(g.w)-2*pad)};
-}
-
-async function recognizePosition(row,posCol){
- const x0=Math.max(0,Math.min(row.width-1,posCol.x));
- const w0=Math.max(12,Math.min(row.width-x0,posCol.w));
- const c=cropCanvas(row,x0,0,w0,row.height);
- const variants=[c,thresholdVariant(c,150),thresholdVariant(c,180)];
- for(const v of variants){
-  const r=await Tesseract.recognize(v,'eng',{
-   tessedit_char_whitelist:'0123456789',
-   tessedit_pageseg_mode:'8'
-  });
-  const m=(r.data.text||'').match(/\d{1,2}/);
-  if(m){
-   const p=parseInt(m[0],10);
-   if(p>=1 && p<=99)return p;
-  }
- }
- return null;
-}
-
-function detectWagonNumberColumn(canvas){
- const rules=detectVerticalRules(canvas);
- if(rules.length<3)return {x:Math.round(canvas.width*0.14),w:Math.round(canvas.width*0.52)};
- const gaps=[];
- for(let i=0;i<rules.length-1;i++){
-  const left=rules[i].center,right=rules[i+1].center;
-  gaps.push({left,right,w:right-left});
- }
- const candidates=gaps.filter(g=>g.left>canvas.width*0.05 && g.right<canvas.width*0.82);
- candidates.sort((a,b)=>b.w-a.w);
- const g=candidates[0]||gaps[1]||gaps[0];
- const pad=Math.max(2,Math.round(g.w*0.03));
- return {x:Math.max(0,Math.round(g.left)+pad),w:Math.max(30,Math.round(g.w)-2*pad)};
-}
-
-function thresholdVariant(src,threshold){
- const c=document.createElement('canvas');c.width=src.width;c.height=src.height;
- const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(src,0,0);
- const im=x.getImageData(0,0,c.width,c.height),d=im.data;
- for(let i=0;i<d.length;i+=4){
-  const g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
-  const v=g<threshold?0:255;d[i]=d[i+1]=d[i+2]=v;
- }
- x.putImageData(im,0,0);return c;
-}
-
 function detectTableRows(canvas){
  const ctx=canvas.getContext('2d',{willReadFrequently:true});
  const {width:w,height:h}=canvas;
@@ -970,26 +839,14 @@ function detectTableRows(canvas){
  return bands.filter((b,i,a)=>!a.slice(0,i).some(x=>Math.abs(x.y-b.y)<8));
 }
 
-async function recognizeSingleRow(canvas,numberCol){
- const x0=Math.max(0,Math.min(canvas.width-1,numberCol.x));
- const w0=Math.max(20,Math.min(canvas.width-x0,numberCol.w));
- const numberOnly=cropCanvas(canvas,x0,0,w0,canvas.height);
- const variants=[numberOnly,thresholdVariant(numberOnly,145),thresholdVariant(numberOnly,175)];
- let best=null;
- for(const v of variants){
-  for(const psm of ['7','8']){
-   const r=await Tesseract.recognize(v,'eng',{
-    tessedit_char_whitelist:'0123456789- ',
-    preserve_interword_spaces:'1',
-    tessedit_pageseg_mode:psm
-   });
-   for(const hit of extractWagonsByLines(r.data.text||'')){
-    if(!best || hit.score<best.score)best=hit;
-    if(best && best.score===0)return best;
-   }
-  }
- }
- return best;
+async function recognizeSingleRow(canvas){
+ const r=await Tesseract.recognize(canvas,'eng',{
+  tessedit_char_whitelist:'0123456789- ',
+  preserve_interword_spaces:'1',
+  tessedit_pageseg_mode:'7'
+ });
+ const hits=extractWagonsByLines(r.data.text||'');
+ return hits[0]||null;
 }
 
 async function fallbackSegmentScan(canvas,progress,startStep,totalSteps){
@@ -1015,55 +872,62 @@ async function fallbackSegmentScan(canvas,progress,startStep,totalSteps){
 async function recognizeWagonList(file,progress){
  const variants=await makeOCRVariants(file);
  const normal=variants[0];
- const numberCol=detectWagonNumberColumn(normal);
- const posCol=detectPositionColumn(normal);
+ const byNumber=new Map();
+
+ // 1) Primary method: detect every physical table row and OCR it separately.
+ // This preserves the order from top to bottom and greatly improves long lists.
  const bands=detectTableRows(normal);
-
- const byPosition=new Map();
- const unpositioned=[];
  let step=0;
- const totalSteps=Math.max(1,bands.length*2)+6;
-
- const addPos=(position,hit,order)=>{
-  if(!hit)return;
-  if(position){
-   const old=byPosition.get(position);
-   if(!old || hit.score<old.hit.score)byPosition.set(position,{position,hit,order});
-  }else{
-   if(!unpositioned.some(x=>x.hit.digits===hit.digits))unpositioned.push({position:null,hit,order});
-  }
- };
+ const rowSteps=bands.length;
+ const totalSteps=Math.max(1,rowSteps)+8+2;
 
  if(bands.length>=3){
   for(let i=0;i<bands.length;i++){
-   const b=bands[i];
    if(progress)progress(step++,totalSteps);
-   const row=cropCanvas(normal,0,Math.max(0,b.y-4),normal.width,Math.min(normal.height-b.y+4,b.h+8));
-   const [position,hit]=await Promise.all([
-    recognizePosition(row,posCol),
-    recognizeSingleRow(row,numberCol)
-   ]);
-   addPos(position,hit,b.y);
+   const b=bands[i];
+
+   // Use almost the full row, but trim extreme edges/borders.
+   const row=cropCanvas(
+    normal,
+    Math.round(normal.width*0.02),
+    Math.max(0,b.y-3),
+    Math.round(normal.width*0.96),
+    Math.min(normal.height-b.y+3,b.h+6)
+   );
+
+   const hit=await recognizeSingleRow(row);
+   if(hit){
+    const old=byNumber.get(hit.digits);
+    const item={...hit,order:b.y};
+    if(!old || hit.score<old.score)byNumber.set(hit.digits,item);
+   }
   }
  }
 
- // Recovery on full image: only add missing numbers, never overwrite physical positions.
- for(const psm of ['6','11','12']){
+ // 2) Fallback: overlapping horizontal sections on normal orientation.
+ const segmented=await fallbackSegmentScan(normal,progress,step,totalSteps);
+ step+=8;
+ for(const hit of segmented){
+  const old=byNumber.get(hit.digits);
+  if(!old || hit.score<old.score)byNumber.set(hit.digits,hit);
+ }
+
+ // 3) Rotated full-image checks only to recover missing numbers.
+ // They never determine the main ordering.
+ for(let vi=1;vi<variants.length;vi++){
   if(progress)progress(step++,totalSteps);
-  const r=await Tesseract.recognize(normal,'eng',{
+  const r=await Tesseract.recognize(variants[vi],'eng',{
    tessedit_char_whitelist:'0123456789- ',
    preserve_interword_spaces:'1',
-   tessedit_pageseg_mode:psm
+   tessedit_pageseg_mode:'6'
   });
-  const hits=extractWagonsByLines(r.data.text||'');
-  for(const hit of hits){
-   const already=[...byPosition.values()].some(x=>x.hit.digits===hit.digits) || unpositioned.some(x=>x.hit.digits===hit.digits);
-   if(!already)unpositioned.push({position:null,hit,order:900000+unpositioned.length});
+  for(const hit of extractWagonsByLines(r.data.text||'')){
+   if(!byNumber.has(hit.digits))byNumber.set(hit.digits,{...hit,order:999999+byNumber.size});
   }
  }
 
- const positioned=[...byPosition.values()].sort((a,b)=>a.position-b.position);
- return {positioned,unpositioned};
+ // Sort primarily by detected physical row position.
+ return [...byNumber.values()].sort((a,b)=>a.order-b.order);
 }
 function addScannedWagonToTrain(d){
  const found=db.find(x=>norm(x.number)===d);
@@ -1087,10 +951,9 @@ $('listPhoto').onchange=async e=>{
  box.style.display='block';box.className='status';box.textContent='Wagenliste wird erkannt …';
  res.innerHTML='';
  try{
-  const scan=await recognizeWagonList(file,(i,total)=>{
-   box.textContent='Wagenliste wird positionsweise geprüft ('+(i+1)+'/'+total+') …';
+  const matches=await recognizeWagonList(file,(i,total)=>{
+   box.textContent='Wagenliste wird zeilenweise geprüft ('+(i+1)+'/'+total+') …';
   });
-  const matches=[...scan.positioned.map(x=>x.hit),...scan.unpositioned.map(x=>x.hit)];
   const candidates=matches.map(x=>x.digits);
   if(!candidates.length){
    box.className='status bad';
@@ -1114,21 +977,8 @@ $('listPhoto').onchange=async e=>{
    for(const d of candidates) addScannedWagonToTrain(d);
    saveTrain();renderTrain();updateDerived();
   }
-  const missBox=$('missingPositions');
-  missBox.innerHTML='';
-  const positions=scan.positioned.map(x=>x.position).filter(Boolean);
-  const maxPos=positions.length?Math.max(...positions):0;
-  const missing=[];
-  for(let p=1;p<=maxPos;p++)if(!positions.includes(p))missing.push(p);
-
-  box.className=(missingCount||missing.length)?'status':'status good';
-  box.textContent=`${candidates.length} gültige Wagennummer(n) erkannt · ${foundCount} aus Datenbank übernommen${missingCount?` · ${missingCount} nicht gefunden`:''}.`;
-
-  if(missing.length){
-   missBox.innerHTML='<div class="status bad" style="display:block">Fehlende Position(en): '+missing.join(', ')+' · Diese Wagen bitte gezielt nachtragen/fotografieren.</div>';
-  }else if(maxPos){
-   missBox.innerHTML='<div class="status good" style="display:block">Positionen 1–'+maxPos+' vollständig erkannt.</div>';
-  }
+  box.className=missingCount?'status':'status good';
+  box.textContent=`${candidates.length} gültige Wagennummer(n) erkannt · ${foundCount} aus Datenbank übernommen${missingCount?` · ${missingCount} nicht gefunden`:''}. Reihenfolge: von oben nach unten.`;
  }catch{
   box.className='status bad';
   box.textContent='Wagenlisten-Erkennung nicht verfügbar.';
