@@ -82,6 +82,14 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
 .pills{display:flex;flex-wrap:wrap;gap:6px}
 .pill{padding:5px 8px;border-radius:999px;background:#eef2ef;font-size:11px}
 .valid{color:var(--ok);font-weight:800}.invalid{color:var(--danger);font-weight:800}
+.docSummary{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:10px 0}
+.docStat{background:#f0f3ef;border:1px solid #d7dfda;border-radius:10px;padding:8px;text-align:center;font-size:10px;color:var(--muted)}
+.docStat b{display:block;font-size:14px;color:#1d2725;margin-top:2px}
+.validation{border-radius:10px;padding:9px 11px;margin-top:10px;font-size:12px;line-height:1.45}
+.validation.good{background:#e7f2eb;color:#176d42}
+.validation.warn{background:#fff3cd;color:#715c10}
+@media(max-width:620px){.docSummary{grid-template-columns:1fr 1fr}}
+
 @media print{
  .top,.bottom,.no-print{display:none!important}
  body{padding:0;background:#fff}
@@ -110,6 +118,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
    <div><label>Von / gültig ab Bahnhof</label><input id="from" value="Gelsenkirchen Hafen"></div>
    <div><label>Nach / gültig bis Bahnhof</label><input id="to"></div>
    <div><label>Abfahrtszeit (manuell)</label><input id="time" type="time"></div>
+   <div><label>Bremsstellung Zug (manuell)</label><select id="trainBrakeMode"><option value="P">P</option><option value="G">G</option></select></div>
    <div><label>Erstellt durch</label><input id="createdBy" value="Uka"></div>
   </div>
   <p class="note">Datum wird beim ersten Öffnen automatisch auf heute gesetzt und bleibt änderbar. Uhrzeit wird bewusst nicht automatisch gesetzt.</p>
@@ -201,6 +210,13 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
    <div class="pill">Datum: <b id="wlDate">–</b></div>
    <div class="pill">Uhrzeit: <b id="wlTime">–</b></div>
   </div>
+  <div class="docSummary">
+   <div class="docStat">Wagen<b id="wlCars">0</b></div>
+   <div class="docStat">Gesamtgewicht<b><span id="wlSumWeight">0.00</span> t</b></div>
+   <div class="docStat">Bremsgewicht <span id="wlBrakeModeLabel">P</span><b><span id="wlBrakeSelected">0</span> t</b></div>
+   <div class="docStat">Festhaltekraft<b><span id="wlHbr">0.0</span> kN</b></div>
+  </div>
+  <div id="wlValidation" class="validation good">Wagenliste vollständig prüfbar.</div>
   <div class="sheet-wrap" style="margin-top:10px">
    <table class="sheet">
     <thead>
@@ -227,13 +243,18 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
   <div class="doc">
    <div class="doc-head"><div class="doc-title">Bremszettel</div><div>für Zug <b data-bind="trainNo">–</b><br>am <b data-bind="date">–</b></div><div>ab <b data-bind="from">–</b></div></div>
    <div class="doc-grid">
-    <div class="doc-row"><b>Gewicht Wagenzug:</b> <span id="docWeight">0</span> t</div>
+    <div class="doc-row"><b>Gewicht Wagenzug:</b> <span id="docWeight">0.00</span> t</div>
+    <div class="doc-row"><b>Bremsstellung:</b> <span id="docBrakeMode">P</span></div>
     <div class="doc-row"><b>Bremsgewicht:</b> <span id="docBrakeWeight">0</span> t</div>
-    <div class="doc-row"><b>Zahl der Achsen:</b> <span id="docAxles">0</span></div>
-    <div class="doc-row"><b>Länge:</b> <span id="docLength">0</span> m</div>
+    <div class="doc-row"><b>Zahl der Radsätze:</b> <span id="docAxles">0</span></div>
+    <div class="doc-row"><b>Länge:</b> <span id="docLength">0.00</span> m</div>
+    <div class="doc-row"><b>Festhaltekraft gesamt:</b> <span id="docHbr">0.0</span> kN</div>
+    <div class="doc-row"><b>Erstes Fahrzeug:</b> <span data-bind="firstCar">–</span></div>
     <div class="doc-row"><b>Letztes Fahrzeug:</b> <span data-bind="lastCar">–</span></div>
+    <div class="doc-row"><b>Ziel:</b> <span data-bind="to">–</span></div>
     <div class="doc-row"><b>Erstellt durch:</b> <span data-bind="createdBy">–</span></div>
    </div>
+   <div id="brakeValidation" class="validation good">Bremsdaten vorhanden.</div>
   </div>
  </div>
 
@@ -245,10 +266,16 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
     <div class="doc-row"><b>nach:</b> <span data-bind="to">–</span></div>
     <div class="doc-row"><b>Uhrzeit:</b> <span data-bind="time">–</span></div>
     <div class="doc-row"><b>Wagenanzahl:</b> <span id="docCars">0</span></div>
-    <div class="doc-row"><b>Achsen:</b> <span id="docAxles2">0</span></div>
+    <div class="doc-row"><b>Radsätze:</b> <span id="docAxles2">0</span></div>
+    <div class="doc-row"><b>Zuggewicht:</b> <span id="wuWeight">0.00</span> t</div>
+    <div class="doc-row"><b>Zuglänge:</b> <span id="wuLength">0.00</span> m</div>
+    <div class="doc-row"><b>Bremsstellung:</b> <span id="wuBrakeMode">P</span></div>
+    <div class="doc-row"><b>Bremsgewicht:</b> <span id="wuBrakeWeight">0</span> t</div>
+    <div class="doc-row"><b>Gefahrgutwagen:</b> <span id="wuDangerCars">0</span></div>
     <div class="doc-row"><b>Erstes Fahrzeug:</b> <span data-bind="firstCar">–</span></div>
     <div class="doc-row"><b>Letztes Fahrzeug:</b> <span data-bind="lastCar">–</span></div>
    </div>
+   <div id="wuValidation" class="validation good">Zugdaten vollständig.</div>
 
    <div class="doc-actions">
     <label class="check"><input type="checkbox" id="schluss"> Schlussscheiben gesteckt</label>
@@ -271,13 +298,13 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
     <div class="doc-row"><b>Letztes Fahrzeug:</b> <span data-bind="lastCar">–</span></div>
    </div>
    <div class="doc-actions">
-    <label class="check"><input type="checkbox"> ordnungsgemäßer Kuppelzustand geprüft</label>
-    <label class="check"><input type="checkbox"> wagentechnische Behandlung durchgeführt</label>
-    <label class="check"><input type="checkbox"> volle Bremsprobe durchgeführt</label>
-    <label class="check"><input type="checkbox"> Schlusssignal angebracht</label>
-    <label class="check"><input type="checkbox"> Triebfahrzeug(e) gekuppelt</label>
-    <label class="check"><input type="checkbox"> Sicherung gegen unbeabsichtigtes Bewegen aufgehoben</label>
-    <label class="check"><input type="checkbox"> vereinfachte Bremsprobe durchgeführt</label>
+    <label class="check"><input type="checkbox" id="mCoupling"> ordnungsgemäßer Kuppelzustand geprüft</label>
+    <label class="check"><input type="checkbox" id="mTechnical"> wagentechnische Behandlung durchgeführt</label>
+    <label class="check"><input type="checkbox" id="mFullBrake"> volle Bremsprobe durchgeführt</label>
+    <label class="check"><input type="checkbox" id="mEndSignal"> Schlusssignal angebracht</label>
+    <label class="check"><input type="checkbox" id="mLocoCoupled"> Triebfahrzeug(e) gekuppelt</label>
+    <label class="check"><input type="checkbox" id="mSecuringRemoved"> Sicherung gegen unbeabsichtigtes Bewegen aufgehoben</label>
+    <label class="check"><input type="checkbox" id="mSimpleBrake"> vereinfachte Bremsprobe durchgeführt</label>
     <p class="note">Diese Tätigkeiten werden nicht automatisch als erledigt markiert. Sie müssen von dir aktiv bestätigt werden.</p>
    </div>
   </div>
@@ -354,7 +381,7 @@ function dedupe(a){
 function saveDB(){db=dedupe(db);localStorage.setItem('wm_v3_db',JSON.stringify(db))}
 function saveTrain(){localStorage.setItem('wm_v3_train',JSON.stringify(train))}
 function saveForm(){
- const ids=['trainNo','date','from','to','time','createdBy','schluss','fullBrake','dangerous','reason','specialNotes'];
+ const ids=['trainNo','date','from','to','time','trainBrakeMode','createdBy','schluss','fullBrake','dangerous','reason','specialNotes','mCoupling','mTechnical','mFullBrake','mEndSignal','mLocoCoupled','mSecuringRemoved','mSimpleBrake'];
  const x={}; ids.forEach(id=>{const el=$(id);x[id]=el?.type==='checkbox'?el.checked:el?.value});
  localStorage.setItem('wm_v3_form',JSON.stringify(x));
 }
@@ -686,6 +713,22 @@ function renderDB(){
 $('filter').oninput=renderDB;
 window.pick=d=>{show('zug');$('wagonSearch').value=fmt(d);checkUIC();loadCurrent(d)};
 
+function selectedBrakeKey(){
+ return $('trainBrakeMode').value==='G'?'brakeG':'brakeP';
+}
+function selectedBrakeWeight(w){
+ return n(w[selectedBrakeKey()]);
+}
+function trainValidation(){
+ const mode=$('trainBrakeMode').value||'P';
+ const missingWeight=[],missingBrake=[];
+ train.forEach((w,i)=>{
+  if(n(w.total)<=0)missingWeight.push(i+1);
+  if(selectedBrakeWeight(w)<=0)missingBrake.push(i+1);
+ });
+ return {mode,missingWeight,missingBrake};
+}
+
 function renderSheet(){
  const body=$('sheetBody');body.innerHTML='';
  train.forEach((w,i)=>{
@@ -697,7 +740,18 @@ function renderSheet(){
   body.appendChild(tr)
  });
  const s=k=>train.reduce((a,w)=>a+n(w[k]),0);
+ const brake=train.reduce((a,w)=>a+selectedBrakeWeight(w),0);
  $('wlAx').textContent=s('axles');$('wlLen').textContent=s('length').toFixed(2);$('wlLoad').textContent=s('load').toFixed(2);$('wlTotal').textContent=s('total').toFixed(2);
+ $('wlCars').textContent=train.length;$('wlSumWeight').textContent=s('total').toFixed(2);
+ $('wlBrakeModeLabel').textContent=$('trainBrakeMode').value||'P';$('wlBrakeSelected').textContent=brake.toFixed(0);
+ $('wlHbr').textContent=s('handBrake').toFixed(1);
+
+ const v=trainValidation(),msgs=[];
+ if(v.missingWeight.length)msgs.push('Gesamtgewicht fehlt: Pos. '+v.missingWeight.join(', '));
+ if(v.missingBrake.length)msgs.push('Bremsgewicht '+v.mode+' fehlt: Pos. '+v.missingBrake.join(', '));
+ const box=$('wlValidation');
+ if(msgs.length){box.className='validation warn';box.textContent=msgs.join(' · ');}
+ else{box.className='validation good';box.textContent='Keine fehlenden Gewichts-/Bremswerte erkannt.';}
 }
 function f(v){return (v===null||v===undefined||v==='')?'':Number(v).toFixed(2)}
 
@@ -705,22 +759,44 @@ function updateDerived(){
  const s=k=>train.reduce((a,w)=>a+n(w[k]),0);
  const first=train[0]?.number||'–',last=train.at(-1)?.number||'–';
  const dateVal=$('date').value?new Date($('date').value+'T00:00:00').toLocaleDateString('de-DE'):'–';
+ const mode=$('trainBrakeMode').value||'P';
+ const brake=train.reduce((a,w)=>a+selectedBrakeWeight(w),0);
+ const dangerCars=train.filter(w=>w.unNr||w.ridGef).length;
  const vals={trainNo:$('trainNo').value||'–',date:dateVal,from:$('from').value||'–',to:$('to').value||'–',time:$('time').value||'–',createdBy:$('createdBy').value||'–',firstCar:first,lastCar:last};
  document.querySelectorAll('[data-bind]').forEach(el=>el.textContent=vals[el.dataset.bind]??'–');
  $('wlTrain').textContent=vals.trainNo;$('wlFrom').textContent=vals.from;$('wlTo').textContent=vals.to;$('wlDate').textContent=vals.date;$('wlTime').textContent=vals.time;
- $('docWeight').textContent=s('total').toFixed(0);$('docBrakeWeight').textContent=(s('brakeP')+s('brakeG')).toFixed(0);$('docAxles').textContent=s('axles');$('docLength').textContent=s('length').toFixed(2);
+
+ $('docWeight').textContent=s('total').toFixed(2);$('docBrakeMode').textContent=mode;$('docBrakeWeight').textContent=brake.toFixed(0);
+ $('docAxles').textContent=s('axles');$('docLength').textContent=s('length').toFixed(2);$('docHbr').textContent=s('handBrake').toFixed(1);
+
  $('docCars').textContent=train.length;$('docAxles2').textContent=s('axles');
- $('meldeWeight').textContent=s('total').toFixed(0);$('meldeAxles').textContent=s('axles');
- $('dangerous').checked=train.some(w=>w.unNr||w.ridGef);
+ $('wuWeight').textContent=s('total').toFixed(2);$('wuLength').textContent=s('length').toFixed(2);
+ $('wuBrakeMode').textContent=mode;$('wuBrakeWeight').textContent=brake.toFixed(0);$('wuDangerCars').textContent=dangerCars;
+
+ $('meldeWeight').textContent=s('total').toFixed(2);$('meldeAxles').textContent=s('axles');
+ $('dangerous').checked=dangerCars>0;
+
+ const v=trainValidation(),bmsgs=[];
+ if(v.missingWeight.length)bmsgs.push('Gesamtgewicht fehlt bei Pos. '+v.missingWeight.join(', '));
+ if(v.missingBrake.length)bmsgs.push('Bremsgewicht '+mode+' fehlt bei Pos. '+v.missingBrake.join(', '));
+ const b=$('brakeValidation');
+ if(bmsgs.length){b.className='validation warn';b.textContent=bmsgs.join(' · ');}
+ else{b.className='validation good';b.textContent='Bremszettel: alle Wagenwerte für Bremsstellung '+mode+' vorhanden.';}
+
+ const wu=$('wuValidation');
+ if(!train.length){wu.className='validation warn';wu.textContent='Noch keine Wagen im Zug.';}
+ else if(v.missingWeight.length||v.missingBrake.length){wu.className='validation warn';wu.textContent='Vor Abschluss fehlende Werte in der Wagenliste prüfen.';}
+ else{wu.className='validation good';wu.textContent='Zuggrunddaten ohne erkennbare Lücken übernommen.';}
+
  if(train.some(w=>w.unNr)){
-   const un=[...new Set(train.map(w=>w.unNr).filter(Boolean))].map(x=>'UN'+x).join(', ');
+   const un=[...new Set(train.map(w=>w.unNr).filter(Boolean))].map(x=>'UN '+x).join(', ');
    if(!$('specialNotes').value)$('specialNotes').value=un;
  }
  renderSheet();
 }
 
-['trainNo','date','from','to','time','createdBy','reason','specialNotes'].forEach(id=>$(id).addEventListener('input',()=>{saveForm();updateDerived()}));
-['schluss','fullBrake','dangerous'].forEach(id=>$(id).addEventListener('change',saveForm));
+['trainNo','date','from','to','time','trainBrakeMode','createdBy','reason','specialNotes'].forEach(id=>$(id).addEventListener('input',()=>{saveForm();updateDerived()}));
+['schluss','fullBrake','dangerous','mCoupling','mTechnical','mFullBrake','mEndSignal','mLocoCoupled','mSecuringRemoved','mSimpleBrake'].forEach(id=>$(id).addEventListener('change',saveForm));
 
 $('export').onclick=()=>{saveDB();const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='wagenmeister-v3-datenbank.json';a.click()};
 $('importBtn').onclick=()=>$('importFile').click();
@@ -1098,8 +1174,8 @@ window.printView=id=>{
 (async()=>{
  try{
   const saved=JSON.parse(localStorage.getItem('wm_v3_form')||'{}');
-  ['trainNo','date','from','to','time','createdBy','reason','specialNotes'].forEach(id=>{if(saved[id]!==undefined&&saved[id]!==null&&saved[id]!=='')$(id).value=saved[id]});
-  ['schluss','fullBrake','dangerous'].forEach(id=>{if(saved[id]!==undefined)$(id).checked=!!saved[id]});
+  ['trainNo','date','from','to','time','trainBrakeMode','createdBy','reason','specialNotes'].forEach(id=>{if(saved[id]!==undefined&&saved[id]!==null&&saved[id]!=='')$(id).value=saved[id]});
+  ['schluss','fullBrake','dangerous','mCoupling','mTechnical','mFullBrake','mEndSignal','mLocoCoupled','mSecuringRemoved','mSimpleBrake'].forEach(id=>{if(saved[id]!==undefined)$(id).checked=!!saved[id]});
  }catch{}
  if(!$('date').value)$('date').value=new Date().toISOString().slice(0,10);
  let fileDB=[],localDB=[];
