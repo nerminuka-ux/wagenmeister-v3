@@ -88,6 +88,25 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
  .sheet-wrap{overflow:visible;border:0}.sheet{min-width:0;font-size:8px}.sheet th,.sheet td{padding:3px}
  .doc{border:0}
 }
+
+.docButtons{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.documentPreviewHost{position:absolute;left:-10000px;top:0;width:297mm;background:white}
+.printDoc{position:relative;background:#fff;overflow:hidden;color:#111}
+.printDoc .tpl{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}
+.printDoc .docLogo{position:absolute;z-index:4;object-fit:contain;background:#fff}
+.printDoc .field{position:absolute;z-index:5;display:flex;align-items:center;justify-content:center;
+ font-family:Arial,sans-serif;color:#111;line-height:1.05;overflow:hidden}
+.printDoc .left{text-align:left;justify-content:flex-start}
+.printDoc .xmark{font-weight:900;font-size:15px}
+#doc-wagenliste{width:287mm;min-height:190mm;padding:8mm}
+#doc-wagenliste .wlLogo{height:10mm;width:auto;display:block;margin-bottom:3mm}
+#doc-wagenliste table{width:100%;border-collapse:collapse;font-family:Arial,sans-serif;font-size:7px}
+#doc-wagenliste th,#doc-wagenliste td{border:.25mm solid #222;padding:1mm;text-align:center}
+#doc-wagenliste .leftcell{text-align:left}
+#doc-bremszettel{width:198mm;height:247mm}
+#doc-wu{width:182mm;height:251mm}
+#doc-meldezettel{width:277mm;height:181mm}
+
 </style>
 </head>
 <body>
@@ -218,68 +237,72 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
  </div>
 </section>
 
+
 <section id="dokumente" class="view">
  <div class="card">
-  <div class="title"><div class="n">1</div><h2>Bremszettel</h2></div>
-  <div class="doc">
-   <div class="doc-head"><div class="doc-title">Bremszettel</div><div>für Zug <b data-bind="trainNo">–</b><br>am <b data-bind="date">–</b></div><div>ab <b data-bind="from">–</b></div></div>
-   <div class="doc-grid">
-    <div class="doc-row"><b>Gewicht Wagenzug:</b> <span id="docWeight">0</span> t</div>
-    <div class="doc-row"><b>Bremsgewicht:</b> <span id="docBrakeWeight">0</span> t</div>
-    <div class="doc-row"><b>Zahl der Achsen:</b> <span id="docAxles">0</span></div>
-    <div class="doc-row"><b>Länge:</b> <span id="docLength">0</span> m</div>
-    <div class="doc-row"><b>Letztes Fahrzeug:</b> <span data-bind="lastCar">–</span></div>
-    <div class="doc-row"><b>Erstellt durch:</b> <span data-bind="createdBy">–</span></div>
-   </div>
+  <div class="title"><div class="n">1</div><h2>Dokumentdaten</h2></div>
+  <div class="grid3">
+   <div><label>Ort / Betriebsstelle</label><input id="docLocation" value="Ge-Hafen"></div>
+   <div><label>Gleis</label><input id="docTrack"></div>
+   <div><label>Auftragsnummer</label><input id="docOrderNo"></div>
+   <div><label>Grund</label><input id="reason" value="Ausgang"></div>
+   <div><label>Uhrzeit volle Bremsprobe</label><input id="fullBrakeTime" type="time"></div>
+   <div><label>Mindestbremshundertstel</label><input id="minBrakePercent" inputmode="numeric"></div>
+  </div>
+  <div style="margin-top:9px"><label>Besonderheiten</label><textarea id="specialNotes"></textarea></div>
+ </div>
+
+ <div class="card">
+  <div class="title"><div class="n">2</div><h2>WU / ZP – Bestätigungen</h2></div>
+  <div class="doc-actions">
+   <label class="check"><input type="checkbox" id="schluss"> Schlussscheiben gesteckt</label>
+   <label class="check"><input type="checkbox" id="fullBrake"> Volle Bremsprobe durchgeführt</label>
+   <label class="check"><input type="checkbox" id="dangerous"> Gefahrgut vorhanden</label>
   </div>
  </div>
 
  <div class="card">
-  <div class="title"><div class="n">2</div><h2>WU / ZP Protokoll</h2></div>
-  <div class="doc">
-   <div class="doc-head"><div class="doc-title">WU / ZP Protokoll</div><div>Zugnummer: <b data-bind="trainNo">–</b><br>Datum: <b data-bind="date">–</b></div><div>Name: <b data-bind="createdBy">–</b></div></div>
-   <div class="doc-grid">
-    <div class="doc-row"><b>nach:</b> <span data-bind="to">–</span></div>
-    <div class="doc-row"><b>Uhrzeit:</b> <span data-bind="time">–</span></div>
-    <div class="doc-row"><b>Wagenanzahl:</b> <span id="docCars">0</span></div>
-    <div class="doc-row"><b>Achsen:</b> <span id="docAxles2">0</span></div>
-    <div class="doc-row"><b>Erstes Fahrzeug:</b> <span data-bind="firstCar">–</span></div>
-    <div class="doc-row"><b>Letztes Fahrzeug:</b> <span data-bind="lastCar">–</span></div>
-   </div>
-
-   <div class="doc-actions">
-    <label class="check"><input type="checkbox" id="schluss"> Schlussscheiben gesteckt</label>
-    <label class="check"><input type="checkbox" id="fullBrake"> Volle Bremsprobe durchgeführt</label>
-    <label class="check"><input type="checkbox" id="dangerous"> Gefahrgut vorhanden</label>
-    <div><label>Grund</label><input id="reason" value="Ausgang"></div>
-    <div><label>Besonderheiten</label><textarea id="specialNotes"></textarea></div>
-   </div>
+  <div class="title"><div class="n">3</div><h2>Meldezettel – Zugvorbereitung</h2></div>
+  <div class="doc-actions">
+   <label class="check"><input type="checkbox" id="docsComplete"> Beförderungs-/Begleitpapiere vollzählig</label>
+   <label class="check"><input type="checkbox" id="ordersComplete"> Beförderungsanordnung(en) vollzählig</label>
+   <label class="check"><input type="checkbox" id="withoutDocs"> Zug verkehrt ohne Beförderungs-/Begleitpapiere</label>
+   <label class="check"><input type="checkbox" id="permanentOrder"> Zug verkehrt mit Dauer-Beförderungsanordnung(en)</label>
+   <label class="check"><input type="checkbox" id="mCoupling"> 1. Ordnungsgemäßer Kuppelzustand geprüft</label>
+   <label class="check"><input type="checkbox" id="mTechnical"> 2. Wagentechnische Behandlung Stufe 4 durchgeführt</label>
+   <label class="check"><input type="checkbox" id="mFullBrake"> 3. Volle Bremsprobe durchgeführt</label>
+   <label class="check"><input type="checkbox" id="mEndSignal"> 4. Schlusssignal angebracht</label>
+   <label class="check"><input type="checkbox" id="mOrderNotified"> 5. Nummer Beförderungsanordnung(en) mitgeteilt</label>
+   <label class="check"><input type="checkbox" id="mLocoCoupled"> 6. Triebfahrzeug(e) gekuppelt</label>
+   <label class="check"><input type="checkbox" id="mSecuringRemoved"> 7. Sicherung gegen unbeabsichtigtes Bewegen aufgehoben</label>
+   <label class="check"><input type="checkbox" id="mSimpleBrake"> 8. Vereinfachte Bremsprobe durchgeführt</label>
   </div>
  </div>
 
  <div class="card">
-  <div class="title"><div class="n">3</div><h2>Meldezettel Zugvorbereitung</h2></div>
-  <div class="doc">
-   <div class="doc-head"><div class="doc-title">Meldezettel</div><div>Zug <b data-bind="trainNo">–</b><br>am <b data-bind="date">–</b></div><div>Betriebsstelle <b data-bind="from">–</b></div></div>
-   <div class="doc-grid">
-    <div class="doc-row"><b>Gewicht:</b> <span id="meldeWeight">0</span> t</div>
-    <div class="doc-row"><b>Achsen:</b> <span id="meldeAxles">0</span></div>
-    <div class="doc-row"><b>Erstes Fahrzeug:</b> <span data-bind="firstCar">–</span></div>
-    <div class="doc-row"><b>Letztes Fahrzeug:</b> <span data-bind="lastCar">–</span></div>
-   </div>
-   <div class="doc-actions">
-    <label class="check"><input type="checkbox"> ordnungsgemäßer Kuppelzustand geprüft</label>
-    <label class="check"><input type="checkbox"> wagentechnische Behandlung durchgeführt</label>
-    <label class="check"><input type="checkbox"> volle Bremsprobe durchgeführt</label>
-    <label class="check"><input type="checkbox"> Schlusssignal angebracht</label>
-    <label class="check"><input type="checkbox"> Triebfahrzeug(e) gekuppelt</label>
-    <label class="check"><input type="checkbox"> Sicherung gegen unbeabsichtigtes Bewegen aufgehoben</label>
-    <label class="check"><input type="checkbox"> vereinfachte Bremsprobe durchgeführt</label>
-    <p class="note">Diese Tätigkeiten werden nicht automatisch als erledigt markiert. Sie müssen von dir aktiv bestätigt werden.</p>
-   </div>
+  <div class="title"><div class="n">4</div><h2>Dokumente erstellen & teilen</h2></div>
+  <p class="note">PDF oder Excel erzeugen und über das iPhone-Teilen-Menü z. B. per WhatsApp, Mail, AirDrop oder „In Dateien sichern“ weitergeben.</p>
+  <div class="docButtons">
+   <button class="btn primary" onclick="openDocument('wagenliste')">Wagenliste ansehen</button>
+   <button class="btn primary" onclick="openDocument('bremszettel')">Bremszettel ansehen</button>
+   <button class="btn primary" onclick="openDocument('wu')">WU / ZP ansehen</button>
+   <button class="btn primary" onclick="openDocument('meldezettel')">Meldezettel ansehen</button>
   </div>
-  <div class="actions no-print"><button class="btn primary" onclick="printView('dokumente')">Dokumente drucken</button></div>
+  <div class="docButtons">
+   <button class="btn secondary" onclick="sharePDF('wagenliste')">Wagenliste PDF teilen</button>
+   <button class="btn secondary" onclick="sharePDF('bremszettel')">Bremszettel PDF teilen</button>
+   <button class="btn secondary" onclick="sharePDF('wu')">WU PDF teilen</button>
+   <button class="btn secondary" onclick="sharePDF('meldezettel')">Meldezettel PDF teilen</button>
+  </div>
+  <div class="docButtons">
+   <button class="btn gold" onclick="shareExcel('wagenliste')">Wagenliste Excel teilen</button>
+   <button class="btn gold" onclick="shareExcel('bremszettel')">Bremszettel Excel teilen</button>
+   <button class="btn gold" onclick="shareExcel('wu')">WU Excel teilen</button>
+   <button class="btn gold" onclick="shareExcel('meldezettel')">Meldezettel Excel teilen</button>
+  </div>
  </div>
+
+ <div id="documentPreviewHost" class="documentPreviewHost"></div>
 </section>
 
 <section id="datenbank" class="view">
@@ -304,6 +327,11 @@ input:focus,select:focus,textarea:focus{outline:none;border-bottom:2px solid var
 </nav>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
 <script>
 let db=[],train=[],state='beladen';
 const $=x=>document.getElementById(x), norm=s=>(s||'').replace(/\D/g,''), n=v=>Number(v)||0;
@@ -692,8 +720,8 @@ function updateDerived(){
  renderSheet();
 }
 
-['trainNo','date','from','to','time','createdBy','reason','specialNotes'].forEach(id=>$(id).addEventListener('input',()=>{saveForm();updateDerived()}));
-['schluss','fullBrake','dangerous'].forEach(id=>$(id).addEventListener('change',saveForm));
+['trainNo','date','from','to','time','createdBy','reason','specialNotes','docLocation','docTrack','docOrderNo','fullBrakeTime','minBrakePercent'].forEach(id=>$(id).addEventListener('input',()=>{saveForm();updateDerived()}));
+['schluss','fullBrake','dangerous','docsComplete','ordersComplete','withoutDocs','permanentOrder','mCoupling','mTechnical','mFullBrake','mEndSignal','mOrderNotified','mLocoCoupled','mSecuringRemoved','mSimpleBrake'].forEach(id=>$(id).addEventListener('change',saveForm));
 
 $('export').onclick=()=>{saveDB();const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='wagenmeister-v3-datenbank.json';a.click()};
 $('importBtn').onclick=()=>$('importFile').click();
@@ -971,69 +999,45 @@ function detectTableRows(canvas){
 }
 
 async function recognizeSingleRow(canvas,numberCol){
- const pad=Math.round(numberCol.w*0.10);
- const x0=Math.max(0,Math.min(canvas.width-1,numberCol.x-pad));
- const w0=Math.max(20,Math.min(canvas.width-x0,numberCol.w+pad*2));
+ const x0=Math.max(0,Math.min(canvas.width-1,numberCol.x));
+ const w0=Math.max(20,Math.min(canvas.width-x0,numberCol.w));
  const numberOnly=cropCanvas(canvas,x0,0,w0,canvas.height);
-
- function upscale(src,f=2.2){
-  const c=document.createElement('canvas');
-  c.width=Math.max(1,Math.round(src.width*f));
-  c.height=Math.max(1,Math.round(src.height*f));
-  const x=c.getContext('2d');
-  x.imageSmoothingEnabled=true;
-  x.imageSmoothingQuality='high';
-  x.drawImage(src,0,0,c.width,c.height);
-  return c;
- }
-
- const up=upscale(numberOnly,2.4);
- const variants=[
-  numberOnly,up,
-  thresholdVariant(up,125),thresholdVariant(up,145),
-  thresholdVariant(up,165),thresholdVariant(up,185),thresholdVariant(up,205)
- ];
+ const variants=[numberOnly,thresholdVariant(numberOnly,145),thresholdVariant(numberOnly,175)];
  let best=null;
  for(const v of variants){
-  for(const psm of ['6','7','8','13']){
+  for(const psm of ['7','8']){
    const r=await Tesseract.recognize(v,'eng',{
     tessedit_char_whitelist:'0123456789- ',
     preserve_interword_spaces:'1',
     tessedit_pageseg_mode:psm
    });
-   const raw=r.data.text||'';
-   const direct=matchLineToDatabase(raw);
-   if(direct && (!best || direct.score<best.score))best=direct;
-   for(const hit of extractWagonsByLines(raw)){
+   for(const hit of extractWagonsByLines(r.data.text||'')){
     if(!best || hit.score<best.score)best=hit;
+    if(best && best.score===0)return best;
    }
-   if(best && best.score===0)return best;
   }
  }
  return best;
 }
 
-async function recognizeNumberColumnSequence(canvas,numberCol){
- const pad=Math.round(numberCol.w*0.08);
- const x0=Math.max(0,numberCol.x-pad);
- const w0=Math.min(canvas.width-x0,numberCol.w+pad*2);
- const col=cropCanvas(canvas,x0,0,w0,canvas.height);
- const variants=[col,thresholdVariant(col,145),thresholdVariant(col,170),thresholdVariant(col,195)];
- let best=[];
- for(const v of variants){
-  const r=await Tesseract.recognize(v,'eng',{
+async function fallbackSegmentScan(canvas,progress,startStep,totalSteps){
+ const found=[];
+ const parts=8;
+ for(let i=0;i<parts;i++){
+  const overlap=Math.floor(canvas.height*0.015);
+  const y=Math.max(0,Math.floor(canvas.height*i/parts)-overlap);
+  const bottom=Math.min(canvas.height,Math.floor(canvas.height*(i+1)/parts)+overlap);
+  const seg=cropCanvas(canvas,0,y,canvas.width,bottom-y);
+  if(progress)progress(startStep+i,totalSteps);
+  const r=await Tesseract.recognize(seg,'eng',{
    tessedit_char_whitelist:'0123456789- ',
    preserve_interword_spaces:'1',
    tessedit_pageseg_mode:'6'
   });
-  const seq=[];
-  for(const line of (r.data.text||'').split(/\r?\n/)){
-   const hit=matchLineToDatabase(line);
-   if(hit && !seq.some(x=>x.digits===hit.digits))seq.push(hit);
-  }
-  if(seq.length>best.length)best=seq;
+  const hits=extractWagonsByLines(r.data.text||'');
+  hits.forEach((hit,j)=>found.push({...hit,order:y+j*20}));
  }
- return best;
+ return found;
 }
 
 async function recognizeWagonList(file,progress){
@@ -1042,37 +1046,36 @@ async function recognizeWagonList(file,progress){
  const numberCol=detectWagonNumberColumn(normal);
  const posCol=detectPositionColumn(normal);
  const bands=detectTableRows(normal);
- const rows=[];
- let step=0;
- const totalSteps=Math.max(1,bands.length)+8;
 
- // Physical image order is the source of truth. Position OCR is only diagnostic.
+ const byPosition=new Map();
+ const unpositioned=[];
+ let step=0;
+ const totalSteps=Math.max(1,bands.length*2)+6;
+
+ const addPos=(position,hit,order)=>{
+  if(!hit)return;
+  if(position){
+   const old=byPosition.get(position);
+   if(!old || hit.score<old.hit.score)byPosition.set(position,{position,hit,order});
+  }else{
+   if(!unpositioned.some(x=>x.hit.digits===hit.digits))unpositioned.push({position:null,hit,order});
+  }
+ };
+
  if(bands.length>=3){
   for(let i=0;i<bands.length;i++){
    const b=bands[i];
    if(progress)progress(step++,totalSteps);
-   const row=cropCanvas(normal,0,Math.max(0,b.y-5),normal.width,Math.min(normal.height-b.y+5,b.h+10));
+   const row=cropCanvas(normal,0,Math.max(0,b.y-4),normal.width,Math.min(normal.height-b.y+4,b.h+8));
    const [position,hit]=await Promise.all([
     recognizePosition(row,posCol),
     recognizeSingleRow(row,numberCol)
    ]);
-   if(hit)rows.push({position,hit,order:b.y});
+   addPos(position,hit,b.y);
   }
  }
 
- // Remove duplicate OCR hits but KEEP physical top-to-bottom order.
- rows.sort((a,b)=>a.order-b.order);
- const physical=[];
- for(const r of rows){
-  if(!physical.some(x=>x.hit.digits===r.hit.digits))physical.push(r);
- }
-
- // Second independent pass: OCR the entire wagon-number column as a vertical sequence.
- if(progress)progress(step++,totalSteps);
- const columnSeq=await recognizeNumberColumnSequence(normal,numberCol);
-
- // Full-image recovery passes. These only add genuinely missing valid DB numbers.
- const extras=[];
+ // Recovery on full image: only add missing numbers, never overwrite physical positions.
  for(const psm of ['6','11','12']){
   if(progress)progress(step++,totalSteps);
   const r=await Tesseract.recognize(normal,'eng',{
@@ -1080,42 +1083,15 @@ async function recognizeWagonList(file,progress){
    preserve_interword_spaces:'1',
    tessedit_pageseg_mode:psm
   });
-  for(const hit of extractWagonsByLines(r.data.text||'')){
-   if(!extras.some(x=>x.digits===hit.digits))extras.push(hit);
+  const hits=extractWagonsByLines(r.data.text||'');
+  for(const hit of hits){
+   const already=[...byPosition.values()].some(x=>x.hit.digits===hit.digits) || unpositioned.some(x=>x.hit.digits===hit.digits);
+   if(!already)unpositioned.push({position:null,hit,order:900000+unpositioned.length});
   }
  }
 
- // Choose the most complete ordered source. The column pass usually preserves the printed row order best.
- let ordered=physical.map(x=>x.hit);
- if(columnSeq.length>ordered.length)ordered=columnSeq.slice();
-
- // Merge numbers from the other pass without disturbing established order.
- // If a number exists in physical rows but not column OCR, insert it according to its image Y position.
- if(ordered===columnSeq || ordered.length===columnSeq.length){
-  for(const r of physical){
-   if(!ordered.some(x=>x.digits===r.hit.digits)){
-    // Estimate insertion point from neighboring physically-recognized rows already in ordered.
-    let before=null,after=null;
-    const idxP=physical.indexOf(r);
-    for(let j=idxP-1;j>=0;j--){if(ordered.some(x=>x.digits===physical[j].hit.digits)){before=physical[j].hit.digits;break}}
-    for(let j=idxP+1;j<physical.length;j++){if(ordered.some(x=>x.digits===physical[j].hit.digits)){after=physical[j].hit.digits;break}}
-    if(after){ordered.splice(ordered.findIndex(x=>x.digits===after),0,r.hit)}
-    else if(before){ordered.splice(ordered.findIndex(x=>x.digits===before)+1,0,r.hit)}
-    else ordered.push(r.hit);
-   }
-  }
- }
-
- // Append only recovery hits that neither ordered pass found. This avoids silently dropping valid wagons.
- for(const hit of extras){
-  if(!ordered.some(x=>x.digits===hit.digits))ordered.push(hit);
- }
-
- // Position diagnostics from physical bands; never use bad position OCR to reorder wagons.
- const positioned=physical.map((x,i)=>({position:x.position||i+1,hit:x.hit,order:x.order}));
- const orderedSet=new Set(positioned.map(x=>x.hit.digits));
- const unpositioned=ordered.filter(hit=>!orderedSet.has(hit.digits)).map((hit,i)=>({position:null,hit,order:900000+i}));
- return {positioned,unpositioned,ordered};
+ const positioned=[...byPosition.values()].sort((a,b)=>a.position-b.position);
+ return {positioned,unpositioned};
 }
 function addScannedWagonToTrain(d){
  const found=db.find(x=>norm(x.number)===d);
@@ -1142,7 +1118,7 @@ $('listPhoto').onchange=async e=>{
   const scan=await recognizeWagonList(file,(i,total)=>{
    box.textContent='Wagenliste wird positionsweise geprüft ('+(i+1)+'/'+total+') …';
   });
-  const matches=(scan.ordered&&scan.ordered.length)?scan.ordered:[...scan.positioned.map(x=>x.hit),...scan.unpositioned.map(x=>x.hit)];
+  const matches=[...scan.positioned.map(x=>x.hit),...scan.unpositioned.map(x=>x.hit)];
   const candidates=matches.map(x=>x.digits);
   if(!candidates.length){
    box.className='status bad';
@@ -1168,7 +1144,7 @@ $('listPhoto').onchange=async e=>{
   }
   const missBox=$('missingPositions');
   missBox.innerHTML='';
-  const positions=scan.positioned.map(x=>x.position).filter(p=>Number.isInteger(p)&&p>0&&p<100);
+  const positions=scan.positioned.map(x=>x.position).filter(Boolean);
   const maxPos=positions.length?Math.max(...positions):0;
   const missing=[];
   for(let p=1;p<=maxPos;p++)if(!positions.includes(p))missing.push(p);
@@ -1220,6 +1196,157 @@ $('photo').onchange=async e=>{
  }
 };
 
+
+function docN(v){return Number(v)||0}
+function docSum(k){return train.reduce((a,w)=>a+docN(w[k]),0)}
+function docDate(){return $('date').value?new Date($('date').value+'T00:00:00').toLocaleDateString('de-DE'):''}
+function docEsc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function docLast4(num){const d=(num||'').replace(/\D/g,'');return d.slice(-5,-1)}
+function docDangerText(){
+ const u=[...new Set(train.map(w=>w.unNr).filter(Boolean))].map(x=>'UN'+x);
+ const g=[...new Set(train.map(w=>w.ridGef).filter(Boolean))].map(x=>'GEF.'+x);
+ return [...u,...g].join(' ');
+}
+function F(x,y,w,h,txt,fs=10,align='center',weight=600){
+ return `<div class="field ${align==='left'?'left':''}" style="left:${x}%;top:${y}%;width:${w}%;height:${h}%;font-size:${fs}px;font-weight:${weight}">${txt}</div>`;
+}
+function X(x,y,on){return on?F(x,y,4,3,'X',15):''}
+
+function buildWagenlisteDoc(){
+ const rows=train.map((w,i)=>`<tr><td>${i+1}</td><td>${docEsc(w.number)}</td><td>${w.axles||''}</td><td>${w.length||''}</td><td>${w.load||''}</td><td>${w.total||''}</td><td>${w.brakeP||''}</td><td>${w.brakeG||''}</td><td>${w.effectiveBrakes||''}</td><td>${w.handBrake||''}</td><td>${docEsc(w.ridGef||'')}</td><td>${docEsc(w.unNr||'')}</td><td>${docEsc(w.destination||$('to').value||'')}</td><td>${w.vmax||''}</td><td class="leftcell">${docEsc(w.remarks||'')}</td></tr>`).join('');
+ return `<div id="doc-wagenliste" class="printDoc">
+  <img src="logo.jpg" class="wlLogo">
+  <table>
+   <tr><th colspan="15" style="font-size:11px">Wagenliste</th></tr>
+   <tr><th colspan="4">Zugnummer: ${docEsc($('trainNo').value)}</th><th colspan="5">Gültig ab Bahnhof: ${docEsc($('from').value)}</th><th colspan="6">Gültig bis Bahnhof: ${docEsc($('to').value)}</th></tr>
+   <tr><th>Pos.</th><th>Nummer</th><th>Radsätze</th><th>Länge</th><th>Ladung</th><th>Gesamt</th><th>P</th><th>G</th><th>wirks. Bremsen</th><th>Hbr</th><th>Gef.-Nr.</th><th>UN-Nr.</th><th>Zielbahnhof</th><th>V max</th><th>Bemerkungen</th></tr>
+   ${rows}
+   <tr><th colspan="2">Summe</th><th>${docSum('axles')}</th><th>${docSum('length').toFixed(2)}</th><th>${docSum('load').toFixed(2)}</th><th>${docSum('total').toFixed(2)}</th><th colspan="9"></th></tr>
+   <tr><td colspan="5">Erstellungsdatum: ${docDate()}</td><td colspan="5">Erstellungszeit: ${docEsc($('time').value)}</td><td colspan="5">Erstellt durch: ${docEsc($('createdBy').value)}</td></tr>
+  </table>
+ </div>`;
+}
+function buildBremszettelDoc(){
+ const w=docSum('total'), bp=docSum('brakeP'), bg=docSum('brakeG');
+ const mode='P', bw=mode==='P'?bp:bg, bh=w>0?Math.floor(bw/w*100):0;
+ const min=docN($('minBrakePercent').value), fehl=min?Math.max(0,min-bh):'';
+ const last=train.at(-1)?.number||'';
+ const d=train.some(x=>x.unNr||x.ridGef);
+ return `<div id="doc-bremszettel" class="printDoc">
+  <img src="brems_template.png" class="tpl"><img src="logo.jpg" class="docLogo" style="right:2%;top:1%;width:28%;height:7%">
+  ${F(23,1.7,18,3,docEsc($('trainNo').value),10)}${F(55,1.7,15,3,docDate(),10)}${F(77,1.7,20,3,docEsc($('from').value),10)}
+  ${F(67,14.5,10,2.3,w.toFixed(0),10)}${F(67,17.0,10,2.3,bw.toFixed(0),10)}${F(67,19.6,10,2.3,docSum('axles'),10)}
+  ${F(67,22.2,10,2.3,min||'',10)}${F(84,24.7,11,2.3,bh||'',10)}${F(84,27.2,11,2.3,fehl,10)}
+  ${F(66,32.2,29,2.4,docEsc(last),9)}${F(67,47.6,10,2.3,docSum('length').toFixed(0),10)}
+  ${F(67,50.2,10,2.3,docSum('effectiveBrakes').toFixed(0),10)}
+  ${F(68,89.7,9,2.2,d?'ja':'nein',9)}
+  ${F(26,96.0,36,2.6,docEsc($('createdBy').value),10,'left',700)}
+ </div>`;
+}
+function buildWUDoc(){
+ const danger=train.some(w=>w.unNr||w.ridGef);
+ const first=train[0]?.number||'',last=train.at(-1)?.number||'';
+ const special=$('specialNotes').value||docDangerText();
+ return `<div id="doc-wu" class="printDoc">
+  <img src="wu_template.png" class="tpl"><img src="logo.jpg" class="docLogo" style="left:2%;top:1%;width:31%;height:8%">
+  ${F(20,13.7,17,3,docEsc($('trainNo').value),11)}${F(43,13.7,17,3,docDate(),11)}${F(72,13.7,25,3,docEsc($('createdBy').value),11)}
+  ${F(20,19.0,17,3,docEsc($('to').value),11)}${F(43,19.0,17,3,docEsc($('time').value),11)}
+  ${F(72,20.4,25,4,docEsc($('docOrderNo').value),9)}
+  ${F(20,24.2,17,3,train.length,11)}${F(43,24.2,17,3,docEsc($('docLocation').value),11)}
+  ${F(20,29.3,17,3,docSum('axles'),11)}${F(43,29.3,17,3,docEsc($('docTrack').value),11)}
+  ${X(31.5,35.8,$('schluss').checked)}${X(31.5,40.8,$('fullBrake').checked)}${X(18.3,49.5,danger)}
+  ${F(15,44.7,70,3,docEsc($('reason').value),10,'left',700)}${F(79,40.7,18,3,docEsc($('fullBrakeTime').value),10)}
+  ${F(27,56.4,42,3,docEsc(first),10)}${F(27,61.0,42,3,docEsc(last),10)}
+  ${F(20,66.7,77,5,docEsc(special),10,'left',700)}
+  ${F(12,95.0,25,3,docEsc($('createdBy').value),9)}${F(73,94.0,24,4,docEsc($('docLocation').value)+', '+docDate(),9)}
+ </div>`;
+}
+function taskStamp(id){return $(id).checked?`${docDate()} - ${$('time').value||'__:__'} - ${docEsc($('createdBy').value)}`:''}
+function buildMeldeDoc(){
+ const first=train[0]?.number||'',last=train.at(-1)?.number||'';
+ return `<div id="doc-meldezettel" class="printDoc">
+  <img src="melde_template.png" class="tpl"><img src="logo.jpg" class="docLogo" style="right:1%;top:1%;width:18%;height:7%">
+  ${F(12,4.6,19,3,docEsc($('from').value),10)}${F(37,4.6,9,3,docEsc($('docTrack').value),10)}
+  ${F(12,9.0,19,3,docDate(),10)}${F(37,9.0,9,3,docEsc($('time').value),10)}
+  ${F(12,15.6,10,3,docSum('total').toFixed(0),10)}${F(22,15.6,8,3,docSum('axles'),10)}${F(37,15.6,13,3,docEsc($('createdBy').value),9)}
+  ${F(3,24.6,22,5,docLast4(first),13)}${F(29,24.6,22,5,docLast4(last),13)}
+  ${F(54,3.2,17,3,docEsc($('trainNo').value),10)}${F(77,2.0,20,3,docDate(),10)}
+  ${F(54,6.8,17,3,docEsc($('from').value),10)}${F(77,6.8,20,3,docEsc($('docTrack').value),10)}
+  ${X(53.5,14.4,$('docsComplete').checked)}${X(75.5,14.4,$('ordersComplete').checked)}
+  ${X(53.5,17.8,$('withoutDocs').checked)}${X(75.5,17.8,$('permanentOrder').checked)}
+  ${F(54,22.0,21,6,docEsc(first),8,'left',600)}${F(77,22.0,21,6,docEsc(last),8,'left',600)}
+  ${F(77,31.8,18,3,docEsc($('createdBy').value),10)}
+  ${F(78,42.0,20,3.5,taskStamp('mCoupling'),8)}${F(78,46.5,20,3.5,taskStamp('mTechnical'),8)}
+  ${F(78,50.7,20,3.5,taskStamp('mFullBrake'),8)}${F(78,55.2,20,3.5,taskStamp('mEndSignal'),8)}
+  ${F(78,61.2,20,3.5,taskStamp('mOrderNotified'),8)}${F(78,67.0,20,3.5,taskStamp('mLocoCoupled'),8)}
+  ${F(78,71.5,20,3.5,taskStamp('mSecuringRemoved'),8)}${F(78,76.0,20,3.5,taskStamp('mSimpleBrake'),8)}
+ </div>`;
+}
+function buildDoc(id){
+ if(id==='wagenliste')return buildWagenlisteDoc();
+ if(id==='bremszettel')return buildBremszettelDoc();
+ if(id==='wu')return buildWUDoc();
+ if(id==='meldezettel')return buildMeldeDoc();
+ return '';
+}
+function mountDoc(id){
+ const host=$('documentPreviewHost');host.innerHTML=buildDoc(id);return host.firstElementChild;
+}
+window.openDocument=id=>{
+ const el=mountDoc(id); if(!el)return;
+ const w=window.open('','_blank');
+ const styles=[...document.querySelectorAll('style')].map(s=>s.outerHTML).join('');
+ w.document.write(`<!doctype html><html><head><meta charset="utf-8">${styles}</head><body style="background:#fff;margin:0">${el.outerHTML}<script>setTimeout(()=>window.print(),450)<\/script></body></html>`);
+ w.document.close();
+}
+async function makePDFBlob(id){
+ if(!window.html2canvas||!window.jspdf)throw new Error('PDF-Bibliothek nicht geladen');
+ const el=mountDoc(id);
+ const canvas=await html2canvas(el,{scale:2,useCORS:true,backgroundColor:'#fff'});
+ const {jsPDF}=window.jspdf;
+ const landscape=id==='wagenliste'||id==='meldezettel';
+ const pdf=new jsPDF({orientation:landscape?'landscape':'portrait',unit:'mm',format:'a4'});
+ const pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight();
+ const ratio=Math.min(pw/canvas.width,ph/canvas.height);
+ const w=canvas.width*ratio,h=canvas.height*ratio;
+ pdf.addImage(canvas.toDataURL('image/jpeg',0.94),'JPEG',(pw-w)/2,(ph-h)/2,w,h);
+ return pdf.output('blob');
+}
+async function shareFile(blob,name,type){
+ const file=new File([blob],name,{type});
+ if(navigator.canShare&&navigator.canShare({files:[file]})){
+  await navigator.share({files:[file],title:name});
+ }else{
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+ }
+}
+window.sharePDF=async id=>{
+ try{
+  const b=await makePDFBlob(id);
+  await shareFile(b,`${id}_${$('trainNo').value||'Zug'}.pdf`,'application/pdf');
+ }catch(e){alert('PDF konnte nicht erstellt werden. Bitte Internetverbindung prüfen.')}
+}
+function excelRows(id){
+ if(id==='wagenliste'){
+  return [['Wagenliste'],['Zugnummer',$('trainNo').value],['Von',$('from').value],['Nach',$('to').value],['Datum',docDate()],[],
+   ['Pos.','Nummer','Radsätze','Länge','Ladung','Gesamt','P','G','wirks. Bremsen','Hbr','Gef.-Nr.','UN-Nr.','Zielbahnhof','V max','Bemerkungen'],
+   ...train.map((w,i)=>[i+1,w.number,w.axles,w.length,w.load,w.total,w.brakeP,w.brakeG,w.effectiveBrakes,w.handBrake,w.ridGef,w.unNr,w.destination||$('to').value,w.vmax,w.remarks])];
+ }
+ if(id==='bremszettel')return [['Bremszettel'],['Zug',$('trainNo').value],['Datum',docDate()],['ab',$('from').value],['Gewicht',docSum('total')],['Bremsgewicht P',docSum('brakeP')],['Bremsgewicht G',docSum('brakeG')],['Achsen',docSum('axles')],['Länge',docSum('length')],['Mindestbremshundertstel',$('minBrakePercent').value],['Letztes Fahrzeug',train.at(-1)?.number||''],['Erstellt durch',$('createdBy').value]];
+ if(id==='wu')return [['WU / ZP Protokoll'],['Zugnummer',$('trainNo').value],['Datum',docDate()],['nach',$('to').value],['Uhrzeit',$('time').value],['Wagenanzahl',train.length],['Achsen',docSum('axles')],['Ort',$('docLocation').value],['Gleis',$('docTrack').value],['Schlussscheiben',$('schluss').checked?'ja':'nein'],['Volle Bremsprobe',$('fullBrake').checked?'ja':'nein'],['Gefahrgut',$('dangerous').checked?'ja':'nein'],['Grund',$('reason').value],['Besonderheiten',$('specialNotes').value]];
+ return [['Meldezettel'],['Zugnummer',$('trainNo').value],['Datum',docDate()],['Betriebsstelle',$('from').value],['Gleis',$('docTrack').value],['Gewicht',docSum('total')],['Achsen',docSum('axles')],['Erstes Fahrzeug',train[0]?.number||''],['Letztes Fahrzeug',train.at(-1)?.number||''],['Erstellt durch',$('createdBy').value]];
+}
+window.shareExcel=async id=>{
+ try{
+  if(!window.XLSX)throw new Error();
+  const ws=XLSX.utils.aoa_to_sheet(excelRows(id));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,id.slice(0,31));
+  const arr=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+  await shareFile(new Blob([arr],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),`${id}_${$('trainNo').value||'Zug'}.xlsx`,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+ }catch(e){alert('Excel-Datei konnte nicht erstellt werden. Bitte Internetverbindung prüfen.')}
+}
+
 window.printView=id=>{
  document.querySelectorAll('.view').forEach(v=>v.classList.remove('printing'));
  $(id).classList.add('printing');window.print();setTimeout(()=>$(id).classList.remove('printing'),300);
@@ -1228,8 +1355,8 @@ window.printView=id=>{
 (async()=>{
  try{
   const saved=JSON.parse(localStorage.getItem('wm_v3_form')||'{}');
-  ['trainNo','date','from','to','time','createdBy','reason','specialNotes'].forEach(id=>{if(saved[id]!==undefined&&saved[id]!==null&&saved[id]!=='')$(id).value=saved[id]});
-  ['schluss','fullBrake','dangerous'].forEach(id=>{if(saved[id]!==undefined)$(id).checked=!!saved[id]});
+  ['trainNo','date','from','to','time','createdBy','reason','specialNotes','docLocation','docTrack','docOrderNo','fullBrakeTime','minBrakePercent'].forEach(id=>{if(saved[id]!==undefined&&saved[id]!==null&&saved[id]!=='')$(id).value=saved[id]});
+  ['schluss','fullBrake','dangerous','docsComplete','ordersComplete','withoutDocs','permanentOrder','mCoupling','mTechnical','mFullBrake','mEndSignal','mOrderNotified','mLocoCoupled','mSecuringRemoved','mSimpleBrake'].forEach(id=>{if(saved[id]!==undefined&&$(id))$(id).checked=!!saved[id]});
  }catch{}
  if(!$('date').value)$('date').value=new Date().toISOString().slice(0,10);
  let fileDB=[],localDB=[];

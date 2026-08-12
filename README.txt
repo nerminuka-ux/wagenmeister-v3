@@ -1,20 +1,17 @@
-Wagenmeister V3 – OCR20 Testversion
+Wagenmeister V3 – Dokumente-Version
 
-Gezielt verbessert:
-- Wagenreihenfolge folgt der physischen Reihenfolge im Foto.
-- OCR-Positionsnummern werden nicht mehr zum Umsortieren benutzt.
-- Die komplette Wagennummern-Spalte wird zusätzlich separat erkannt.
-- Jede Tabellenzeile wird vergrößert und mit mehreren OCR-Varianten geprüft.
-- Zusätzliche gültige Datenbanktreffer werden als Recovery übernommen.
+Basis: funktionierende Wiederherstellungsversion.
+Kamera/OCR/Drag&Drop wurden NICHT verändert.
 
-Unverändert:
-- Datenbank
-- manuelle Eingabe
-- Zugdaten
-- Drag&Drop
-- Speicherung
-- restliche App
+Neu:
+- Bremszettel nach Excel-Vorlage
+- WU/ZP-Protokoll nach Excel-Vorlage
+- Meldezettel Abstellung/Zugvorbereitung nach Excel-Vorlage
+- GELSENLOG-Logo auf den Dokumenten
+- Dokumente ansehen/drucken
+- PDF-Datei erzeugen und über iPhone-Teilen-Menü weiterleiten
+- Excel-Datei (.xlsx) erzeugen und über iPhone-Teilen-Menü weiterleiten
+- WhatsApp, Mail, AirDrop, Dateien etc. über das iOS-Teilen-Menü
 
-Bitte mit demselben 20-Wagen-Foto testen:
-1. 20/20 erkannt?
-2. Reihenfolge 1–20 korrekt?
+Hinweis:
+PDF/Excel-Erzeugung lädt Bibliotheken aus dem Internet.
