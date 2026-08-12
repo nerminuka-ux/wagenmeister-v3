@@ -971,45 +971,69 @@ function detectTableRows(canvas){
 }
 
 async function recognizeSingleRow(canvas,numberCol){
- const x0=Math.max(0,Math.min(canvas.width-1,numberCol.x));
- const w0=Math.max(20,Math.min(canvas.width-x0,numberCol.w));
+ const pad=Math.round(numberCol.w*0.10);
+ const x0=Math.max(0,Math.min(canvas.width-1,numberCol.x-pad));
+ const w0=Math.max(20,Math.min(canvas.width-x0,numberCol.w+pad*2));
  const numberOnly=cropCanvas(canvas,x0,0,w0,canvas.height);
- const variants=[numberOnly,thresholdVariant(numberOnly,145),thresholdVariant(numberOnly,175)];
+
+ function upscale(src,f=2.2){
+  const c=document.createElement('canvas');
+  c.width=Math.max(1,Math.round(src.width*f));
+  c.height=Math.max(1,Math.round(src.height*f));
+  const x=c.getContext('2d');
+  x.imageSmoothingEnabled=true;
+  x.imageSmoothingQuality='high';
+  x.drawImage(src,0,0,c.width,c.height);
+  return c;
+ }
+
+ const up=upscale(numberOnly,2.4);
+ const variants=[
+  numberOnly,up,
+  thresholdVariant(up,125),thresholdVariant(up,145),
+  thresholdVariant(up,165),thresholdVariant(up,185),thresholdVariant(up,205)
+ ];
  let best=null;
  for(const v of variants){
-  for(const psm of ['7','8']){
+  for(const psm of ['6','7','8','13']){
    const r=await Tesseract.recognize(v,'eng',{
     tessedit_char_whitelist:'0123456789- ',
     preserve_interword_spaces:'1',
     tessedit_pageseg_mode:psm
    });
-   for(const hit of extractWagonsByLines(r.data.text||'')){
+   const raw=r.data.text||'';
+   const direct=matchLineToDatabase(raw);
+   if(direct && (!best || direct.score<best.score))best=direct;
+   for(const hit of extractWagonsByLines(raw)){
     if(!best || hit.score<best.score)best=hit;
-    if(best && best.score===0)return best;
    }
+   if(best && best.score===0)return best;
   }
  }
  return best;
 }
 
-async function fallbackSegmentScan(canvas,progress,startStep,totalSteps){
- const found=[];
- const parts=8;
- for(let i=0;i<parts;i++){
-  const overlap=Math.floor(canvas.height*0.015);
-  const y=Math.max(0,Math.floor(canvas.height*i/parts)-overlap);
-  const bottom=Math.min(canvas.height,Math.floor(canvas.height*(i+1)/parts)+overlap);
-  const seg=cropCanvas(canvas,0,y,canvas.width,bottom-y);
-  if(progress)progress(startStep+i,totalSteps);
-  const r=await Tesseract.recognize(seg,'eng',{
+async function recognizeNumberColumnSequence(canvas,numberCol){
+ const pad=Math.round(numberCol.w*0.08);
+ const x0=Math.max(0,numberCol.x-pad);
+ const w0=Math.min(canvas.width-x0,numberCol.w+pad*2);
+ const col=cropCanvas(canvas,x0,0,w0,canvas.height);
+ const variants=[col,thresholdVariant(col,145),thresholdVariant(col,170),thresholdVariant(col,195)];
+ let best=[];
+ for(const v of variants){
+  const r=await Tesseract.recognize(v,'eng',{
    tessedit_char_whitelist:'0123456789- ',
    preserve_interword_spaces:'1',
    tessedit_pageseg_mode:'6'
   });
-  const hits=extractWagonsByLines(r.data.text||'');
-  hits.forEach((hit,j)=>found.push({...hit,order:y+j*20}));
+  const seq=[];
+  for(const line of (r.data.text||'').split(/\r?\n/)){
+   const hit=matchLineToDatabase(line);
+   if(hit && !seq.some(x=>x.digits===hit.digits))seq.push(hit);
+  }
+  if(seq.length>best.length)best=seq;
  }
- return found;
+ return best;
 }
 
 async function recognizeWagonList(file,progress){
@@ -1018,36 +1042,37 @@ async function recognizeWagonList(file,progress){
  const numberCol=detectWagonNumberColumn(normal);
  const posCol=detectPositionColumn(normal);
  const bands=detectTableRows(normal);
-
- const byPosition=new Map();
- const unpositioned=[];
+ const rows=[];
  let step=0;
- const totalSteps=Math.max(1,bands.length*2)+6;
+ const totalSteps=Math.max(1,bands.length)+8;
 
- const addPos=(position,hit,order)=>{
-  if(!hit)return;
-  if(position){
-   const old=byPosition.get(position);
-   if(!old || hit.score<old.hit.score)byPosition.set(position,{position,hit,order});
-  }else{
-   if(!unpositioned.some(x=>x.hit.digits===hit.digits))unpositioned.push({position:null,hit,order});
-  }
- };
-
+ // Physical image order is the source of truth. Position OCR is only diagnostic.
  if(bands.length>=3){
   for(let i=0;i<bands.length;i++){
    const b=bands[i];
    if(progress)progress(step++,totalSteps);
-   const row=cropCanvas(normal,0,Math.max(0,b.y-4),normal.width,Math.min(normal.height-b.y+4,b.h+8));
+   const row=cropCanvas(normal,0,Math.max(0,b.y-5),normal.width,Math.min(normal.height-b.y+5,b.h+10));
    const [position,hit]=await Promise.all([
     recognizePosition(row,posCol),
     recognizeSingleRow(row,numberCol)
    ]);
-   addPos(position,hit,b.y);
+   if(hit)rows.push({position,hit,order:b.y});
   }
  }
 
- // Recovery on full image: only add missing numbers, never overwrite physical positions.
+ // Remove duplicate OCR hits but KEEP physical top-to-bottom order.
+ rows.sort((a,b)=>a.order-b.order);
+ const physical=[];
+ for(const r of rows){
+  if(!physical.some(x=>x.hit.digits===r.hit.digits))physical.push(r);
+ }
+
+ // Second independent pass: OCR the entire wagon-number column as a vertical sequence.
+ if(progress)progress(step++,totalSteps);
+ const columnSeq=await recognizeNumberColumnSequence(normal,numberCol);
+
+ // Full-image recovery passes. These only add genuinely missing valid DB numbers.
+ const extras=[];
  for(const psm of ['6','11','12']){
   if(progress)progress(step++,totalSteps);
   const r=await Tesseract.recognize(normal,'eng',{
@@ -1055,15 +1080,42 @@ async function recognizeWagonList(file,progress){
    preserve_interword_spaces:'1',
    tessedit_pageseg_mode:psm
   });
-  const hits=extractWagonsByLines(r.data.text||'');
-  for(const hit of hits){
-   const already=[...byPosition.values()].some(x=>x.hit.digits===hit.digits) || unpositioned.some(x=>x.hit.digits===hit.digits);
-   if(!already)unpositioned.push({position:null,hit,order:900000+unpositioned.length});
+  for(const hit of extractWagonsByLines(r.data.text||'')){
+   if(!extras.some(x=>x.digits===hit.digits))extras.push(hit);
   }
  }
 
- const positioned=[...byPosition.values()].sort((a,b)=>a.position-b.position);
- return {positioned,unpositioned};
+ // Choose the most complete ordered source. The column pass usually preserves the printed row order best.
+ let ordered=physical.map(x=>x.hit);
+ if(columnSeq.length>ordered.length)ordered=columnSeq.slice();
+
+ // Merge numbers from the other pass without disturbing established order.
+ // If a number exists in physical rows but not column OCR, insert it according to its image Y position.
+ if(ordered===columnSeq || ordered.length===columnSeq.length){
+  for(const r of physical){
+   if(!ordered.some(x=>x.digits===r.hit.digits)){
+    // Estimate insertion point from neighboring physically-recognized rows already in ordered.
+    let before=null,after=null;
+    const idxP=physical.indexOf(r);
+    for(let j=idxP-1;j>=0;j--){if(ordered.some(x=>x.digits===physical[j].hit.digits)){before=physical[j].hit.digits;break}}
+    for(let j=idxP+1;j<physical.length;j++){if(ordered.some(x=>x.digits===physical[j].hit.digits)){after=physical[j].hit.digits;break}}
+    if(after){ordered.splice(ordered.findIndex(x=>x.digits===after),0,r.hit)}
+    else if(before){ordered.splice(ordered.findIndex(x=>x.digits===before)+1,0,r.hit)}
+    else ordered.push(r.hit);
+   }
+  }
+ }
+
+ // Append only recovery hits that neither ordered pass found. This avoids silently dropping valid wagons.
+ for(const hit of extras){
+  if(!ordered.some(x=>x.digits===hit.digits))ordered.push(hit);
+ }
+
+ // Position diagnostics from physical bands; never use bad position OCR to reorder wagons.
+ const positioned=physical.map((x,i)=>({position:x.position||i+1,hit:x.hit,order:x.order}));
+ const orderedSet=new Set(positioned.map(x=>x.hit.digits));
+ const unpositioned=ordered.filter(hit=>!orderedSet.has(hit.digits)).map((hit,i)=>({position:null,hit,order:900000+i}));
+ return {positioned,unpositioned,ordered};
 }
 function addScannedWagonToTrain(d){
  const found=db.find(x=>norm(x.number)===d);
@@ -1090,7 +1142,7 @@ $('listPhoto').onchange=async e=>{
   const scan=await recognizeWagonList(file,(i,total)=>{
    box.textContent='Wagenliste wird positionsweise geprüft ('+(i+1)+'/'+total+') …';
   });
-  const matches=[...scan.positioned.map(x=>x.hit),...scan.unpositioned.map(x=>x.hit)];
+  const matches=(scan.ordered&&scan.ordered.length)?scan.ordered:[...scan.positioned.map(x=>x.hit),...scan.unpositioned.map(x=>x.hit)];
   const candidates=matches.map(x=>x.digits);
   if(!candidates.length){
    box.className='status bad';
@@ -1116,7 +1168,7 @@ $('listPhoto').onchange=async e=>{
   }
   const missBox=$('missingPositions');
   missBox.innerHTML='';
-  const positions=scan.positioned.map(x=>x.position).filter(Boolean);
+  const positions=scan.positioned.map(x=>x.position).filter(p=>Number.isInteger(p)&&p>0&&p<100);
   const maxPos=positions.length?Math.max(...positions):0;
   const missing=[];
   for(let p=1;p<=maxPos;p++)if(!positions.includes(p))missing.push(p);
