@@ -1,5 +1,5 @@
-const CACHE='wm-v3-20260816-0519';
-const VERSION='20260816-0519';
+const CACHE='wm-v3-20260816-0522';
+const VERSION='20260816-0522';
 const ASSETS=['./','./index.html','./template-store.js','./original-export.js','./hotfix-documents.js','./wagons.json','./logo.jpg','./manifest.webmanifest','./icon-180.png','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).catch(()=>{}).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil((async()=>{
