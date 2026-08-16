@@ -1,7 +1,22 @@
-const CACHE='wm-v3-20260816-0448';
+const CACHE='wm-v3-20260816-0454';
+const VERSION='20260816-0454';
 const ASSETS=['./','./index.html','./template-store.js','./original-export.js','./hotfix-documents.js','./wagons.json','./logo.jpg','./manifest.webmanifest','./icon-180.png','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).catch(()=>{}).then(()=>self.skipWaiting())));
-self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
+self.addEventListener('activate',e=>e.waitUntil((async()=>{
+ const keys=await caches.keys();
+ await Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)));
+ await self.clients.claim();
+ const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true});
+ for(const client of clients){
+  try{
+   const u=new URL(client.url);
+   if(u.searchParams.get('wmv')!==VERSION){
+    u.searchParams.set('wmv',VERSION);
+    await client.navigate(u.toString());
+   }
+  }catch{}
+ }
+})()));
 self.addEventListener('fetch',e=>{
  if(e.request.method!=='GET')return;
  const req=e.request;
@@ -15,9 +30,9 @@ self.addEventListener('fetch',e=>{
     if(r.ok&&ct.includes('text/html')){
      let html=await r.text();
      const scripts=[];
-     if(!html.includes('template-store.js'))scripts.push('<script src="./template-store.js?v=20260816-0448"></script>');
-     if(!html.includes('original-export.js'))scripts.push('<script src="./original-export.js?v=20260816-0448"></script>');
-     if(!html.includes('hotfix-documents.js'))scripts.push('<script src="./hotfix-documents.js?v=20260816-0448"></script>');
+     if(!html.includes('template-store.js'))scripts.push('<script src="./template-store.js?v='+VERSION+'"></script>');
+     if(!html.includes('original-export.js'))scripts.push('<script src="./original-export.js?v='+VERSION+'"></script>');
+     if(!html.includes('hotfix-documents.js'))scripts.push('<script src="./hotfix-documents.js?v='+VERSION+'"></script>');
      if(scripts.length)html=html.replace('</body>',scripts.join('')+'</body>');
      out=new Response(html,{status:r.status,statusText:r.statusText,headers:r.headers});
     }
