@@ -1,5 +1,5 @@
-const CACHE='wm-v3-20260816-0522';
-const VERSION='20260816-0522';
+const CACHE='wm-v3-20260816-0540';
+const VERSION='20260816-0540';
 const ASSETS=['./','./index.html','./template-store.js','./original-export.js','./hotfix-documents.js','./wagons.json','./logo.jpg','./manifest.webmanifest','./icon-180.png','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).catch(()=>{}).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil((async()=>{
@@ -25,6 +25,15 @@ self.addEventListener('fetch',e=>{
     const ct=r.headers.get('content-type')||'';
     if(r.ok&&ct.includes('text/html')){
      let html=await r.text();
+
+     // Safari-Fix: kein verschachteltes <script> innerhalb des Hauptscripts.
+     // Das alte Druck-Snippet beendete auf iOS den Haupt-Scriptblock und zeigte
+     // den restlichen JavaScript-Code als Text auf der Seite an.
+     html=html.replace(
+      /w\.document\.write\(`<!doctype html><html><head><meta charset="utf-8">\$\{styles\}<\/head><body style="background:#fff;margin:0">\$\{el\.outerHTML\}<script>setTimeout\(\(\)=>window\.print\(\),450\)<\\\/script><\/body><\/html>`\);\s*w\.document\.close\(\);/,
+      'w.document.write(`<!doctype html><html><head><meta charset="utf-8">${styles}</head><body style="background:#fff;margin:0">${el.outerHTML}</body></html>`);\n w.document.close();\n setTimeout(()=>{try{w.print()}catch{}},450);'
+     );
+
      const scripts=[];
      if(!html.includes('template-store.js'))scripts.push('<script src="./template-store.js?v='+VERSION+'"></script>');
      if(!html.includes('original-export.js'))scripts.push('<script src="./original-export.js?v='+VERSION+'"></script>');
