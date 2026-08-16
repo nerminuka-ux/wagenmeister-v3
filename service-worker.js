@@ -1,5 +1,5 @@
-const CACHE='wm-v3-20260816-0442';
-const ASSETS=['./','./index.html','./template-store.js','./original-export.js','./wagons.json','./logo.jpg','./manifest.webmanifest','./icon-180.png','./icon-192.png','./icon-512.png'];
+const CACHE='wm-v3-20260816-0448';
+const ASSETS=['./','./index.html','./template-store.js','./original-export.js','./hotfix-documents.js','./wagons.json','./logo.jpg','./manifest.webmanifest','./icon-180.png','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).catch(()=>{}).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{
@@ -14,8 +14,11 @@ self.addEventListener('fetch',e=>{
     const ct=r.headers.get('content-type')||'';
     if(r.ok&&ct.includes('text/html')){
      let html=await r.text();
-     if(!html.includes('template-store.js')) html=html.replace('</body>','<script src="./template-store.js?v=20260816-0442"></script><script src="./original-export.js?v=20260816-0442"></script></body>');
-     else if(!html.includes('original-export.js')) html=html.replace('</body>','<script src="./original-export.js?v=20260816-0442"></script></body>');
+     const scripts=[];
+     if(!html.includes('template-store.js'))scripts.push('<script src="./template-store.js?v=20260816-0448"></script>');
+     if(!html.includes('original-export.js'))scripts.push('<script src="./original-export.js?v=20260816-0448"></script>');
+     if(!html.includes('hotfix-documents.js'))scripts.push('<script src="./hotfix-documents.js?v=20260816-0448"></script>');
+     if(scripts.length)html=html.replace('</body>',scripts.join('')+'</body>');
      out=new Response(html,{status:r.status,statusText:r.statusText,headers:r.headers});
     }
    }catch{}
