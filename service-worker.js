@@ -1,5 +1,5 @@
-const CACHE='wm-v3-20260816-0454';
-const VERSION='20260816-0454';
+const CACHE='wm-v3-20260816-0519';
+const VERSION='20260816-0519';
 const ASSETS=['./','./index.html','./template-store.js','./original-export.js','./hotfix-documents.js','./wagons.json','./logo.jpg','./manifest.webmanifest','./icon-180.png','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).catch(()=>{}).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil((async()=>{
@@ -10,17 +10,13 @@ self.addEventListener('activate',e=>e.waitUntil((async()=>{
  for(const client of clients){
   try{
    const u=new URL(client.url);
-   if(u.searchParams.get('wmv')!==VERSION){
-    u.searchParams.set('wmv',VERSION);
-    await client.navigate(u.toString());
-   }
+   if(u.searchParams.get('wmv')!==VERSION){u.searchParams.set('wmv',VERSION);await client.navigate(u.toString())}
   }catch{}
  }
 })()));
 self.addEventListener('fetch',e=>{
  if(e.request.method!=='GET')return;
- const req=e.request;
- const url=new URL(req.url);
+ const req=e.request,url=new URL(req.url);
  const isPage=req.mode==='navigate'||url.pathname.endsWith('/index.html')||url.pathname.endsWith('/wagenmeister-v3/');
  if(isPage){
   e.respondWith(fetch(req,{cache:'no-store'}).then(async r=>{
