@@ -1,1 +1,92 @@
-<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Wagenmeister Dokumente</title><style>body{margin:0;background:#eef1ed;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial;color:#111}.bar{position:sticky;top:0;z-index:5;background:#123f3e;color:#fff;display:flex;justify-content:space-between;align-items:center;padding:calc(8px + env(safe-area-inset-top)) 12px 8px}.bar button,.bar a{border:0;border-radius:10px;padding:10px 12px;font-weight:800;text-decoration:none}.close{background:#fff;color:#123f3e}.wrap{padding:12px;overflow:auto}.menu{max-width:760px;margin:20px auto;background:#fff;border-radius:16px;padding:16px;box-shadow:0 3px 18px rgba(0,0,0,.08)}.menu h2{margin-top:0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid a{display:block;background:#123f3e;color:#fff;text-decoration:none;text-align:center;padding:16px 10px;border-radius:12px;font-weight:800}.sheet{background:#fff;margin:auto;box-shadow:0 3px 18px rgba(0,0,0,.18);padding:12mm;box-sizing:border-box}.portrait{width:190mm;min-height:260mm}.landscape{width:277mm;min-height:190mm}.head{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:14px}.head img{width:42mm;max-height:18mm;object-fit:contain}.row{display:grid;grid-template-columns:58mm 1fr;border-bottom:1px solid #aaa;padding:6px 0;font-size:12px}table{width:100%;border-collapse:collapse;font-size:10px}th,td{border:1px solid #333;padding:4px;text-align:center}@media(max-width:700px){.sheet{transform-origin:top left}.grid{grid-template-columns:1fr}}@media print{.bar{display:none}.wrap{padding:0}.sheet{box-shadow:none}}</style></head><body><div class="bar"><b id="title">Dokumente</b><a class="close" href="./index.html">✕ Schließen</a></div><div class="wrap"><div id="host"></div></div><script>const $=id=>document.getElementById(id);const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));const saved=(()=>{try{return JSON.parse(localStorage.getItem('wm_v3_form')||'{}')}catch{return{}}})();const train=(()=>{try{return JSON.parse(localStorage.getItem('wm_v3_train')||'[]')}catch{return[]}})();const sum=k=>train.reduce((a,w)=>a+(Number(w?.[k])||0),0);const dateDE=()=>{const x=saved.date||'';if(!x)return'';const[y,m,d]=x.split('-');return d+'.'+m+'.'+y};const row=(k,val)=>'<div class="row"><b>'+esc(k)+'</b><span>'+esc(val)+'</span></div>';const head=t=>'<div class="head"><div><div style="font-size:24px;font-weight:800">'+esc(t)+'</div><div style="font-size:11px">GELSEN-LOG Wagenmeister</div></div><img src="logo.jpg"></div>';function build(id){if(id==='wagenliste'){const rows=train.map((w,i)=>'<tr><td>'+(i+1)+'</td><td>'+esc(w.number||'')+'</td><td>'+(w.axles||'')+'</td><td>'+(w.length||'')+'</td><td>'+(w.load||'')+'</td><td>'+(w.total||'')+'</td><td>'+(w.brakeP||'')+'</td><td>'+(w.brakeG||'')+'</td><td>'+esc(w.destination||saved.to||'')+'</td></tr>').join('');return '<div class="sheet landscape">'+head('Wagenliste')+'<div style="font-size:12px;margin-bottom:8px">Zug '+esc(saved.trainNo||'')+' · '+esc(saved.from||'')+' → '+esc(saved.to||'')+' · '+dateDE()+'</div><table><tr><th>Pos.</th><th>Wagennummer</th><th>Achsen</th><th>Länge</th><th>Ladung</th><th>Gesamt</th><th>P</th><th>G</th><th>Ziel</th></tr>'+rows+'<tr><th colspan="2">Summe</th><th>'+sum('axles')+'</th><th>'+sum('length').toFixed(2)+'</th><th>'+sum('load').toFixed(2)+'</th><th>'+sum('total').toFixed(2)+'</th><th>'+sum('brakeP').toFixed(0)+'</th><th>'+sum('brakeG').toFixed(0)+'</th><th></th></tr></table></div>'}if(id==='bremszettel'){const total=sum('total'),bp=sum('brakeP'),bh=total?Math.floor(bp/total*100):0;return '<div class="sheet portrait">'+head('Bremszettel')+row('Zugnummer',saved.trainNo||'')+row('Datum',dateDE())+row('Gültig ab',saved.from||'')+row('Gesamtgewicht',total.toFixed(1)+' t')+row('Bremsgewicht P',bp.toFixed(1)+' t')+row('Radsätze',sum('axles'))+row('Zuglänge',sum('length').toFixed(1)+' m')+row('Bremshundertstel',bh)+row('Mindestbremshundertstel',saved.minBrakePercent||'')+row('Letztes Fahrzeug',train.at(-1)?.number||'')+row('Erstellt durch',saved.createdBy||'')+'</div>'}if(id==='wu'){return '<div class="sheet portrait">'+head('WU / ZP-Protokoll')+row('Zugnummer',saved.trainNo||'')+row('Datum',dateDE())+row('Nach',saved.to||'')+row('Uhrzeit',saved.time||'')+row('Wagenanzahl',train.length)+row('Radsätze',sum('axles'))+row('Ort',saved.docLocation||'')+row('Gleis',saved.docTrack||'')+row('Grund',saved.reason||'')+row('Besonderheiten',saved.specialNotes||'')+row('Erstellt durch',saved.createdBy||'')+'</div>'}return '<div class="sheet portrait">'+head('Meldezettel – Zugvorbereitung')+row('Zugnummer',saved.trainNo||'')+row('Datum',dateDE())+row('Betriebsstelle',saved.from||'')+row('Gleis',saved.docTrack||'')+row('Gewicht',sum('total').toFixed(1)+' t')+row('Radsätze',sum('axles'))+row('Erstes Fahrzeug',train[0]?.number||'')+row('Letztes Fahrzeug',train.at(-1)?.number||'')+row('Erstellt durch',saved.createdBy||'')+'</div>'}const id=new URLSearchParams(location.search).get('id');const names={wagenliste:'Wagenliste',bremszettel:'Bremszettel',wu:'WU / ZP-Protokoll',meldezettel:'Meldezettel'};if(!id){$('title').textContent='Dokumente';$('host').innerHTML='<div class="menu"><h2>Dokument auswählen</h2><div class="grid"><a href="?id=wagenliste">📋 Wagenliste</a><a href="?id=bremszettel">🧾 Bremszettel</a><a href="?id=wu">🛠️ WU / ZP</a><a href="?id=meldezettel">📝 Meldezettel</a></div></div>'}else{$('title').textContent=names[id]||'Dokument';$('host').innerHTML=build(id);function fit(){const s=document.querySelector('.sheet'),w=document.querySelector('.wrap');if(!s||!w)return;s.style.transform='none';s.style.marginBottom='0';const r=s.getBoundingClientRect();const scale=Math.min(1,(w.clientWidth-24)/r.width);s.style.transform='scale('+scale+')';s.style.marginBottom=(r.height*(scale-1))+'px'}setTimeout(fit,30);addEventListener('resize',fit)}</script></body></html>
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Wagenmeister Dokumente</title>
+<style>
+:root{--p:#123f3e;--bg:#eef1ed}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial;color:#111}
+.bar{position:sticky;top:0;z-index:20;background:var(--p);color:#fff;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top)) 12px 8px}
+.bar .right{display:flex;gap:7px}.bar button,.bar a{border:0;border-radius:10px;padding:10px 12px;font-weight:800;text-decoration:none}.print{background:rgba(255,255,255,.14);color:#fff}.close{background:#fff;color:var(--p)}
+.wrap{padding:12px;overflow:auto;-webkit-overflow-scrolling:touch}
+.menu{max-width:760px;margin:20px auto;background:#fff;border-radius:16px;padding:16px;box-shadow:0 3px 18px rgba(0,0,0,.08)}
+.menu h2{margin:0 0 8px}.menu p{font-size:13px;color:#586563;line-height:1.45;margin:0 0 14px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid a{display:block;background:var(--p);color:#fff;text-decoration:none;text-align:center;padding:16px 10px;border-radius:12px;font-weight:800}.excel{grid-column:1/-1;background:#d9ad3d!important;color:#352a10!important}
+.page{position:relative;background:white;margin:auto;box-shadow:0 3px 18px rgba(0,0,0,.18);transform-origin:top left;overflow:hidden}
+.page>img.tpl{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;z-index:1}
+.f{position:absolute;z-index:2;display:flex;align-items:center;justify-content:center;text-align:center;font-family:Arial,sans-serif;color:#111;font-size:10px;line-height:1.05;overflow:hidden;white-space:pre-wrap}
+.f.left{justify-content:flex-start;text-align:left}.f.bold{font-weight:700}.x{font-size:15px;font-weight:900}
+#brems{width:198mm;height:247mm}
+#wu{width:182mm;height:251mm}
+#melde{width:277mm;height:181mm}
+.wl{width:287mm;min-height:190mm;background:#fff;padding:7mm;font-family:Arial,sans-serif}.wlHead{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin-bottom:3mm}.wlHead img{height:10mm;width:auto}.wl h2{margin:0;font-size:16px}.wl table{border-collapse:collapse;width:100%;font-size:7px}.wl th,.wl td{border:.25mm solid #222;padding:1mm;text-align:center}.wl .left{text-align:left}.wlMeta{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:3mm;font-size:8px}
+.note{max-width:850px;margin:10px auto;background:#fff7dc;border:1px solid #ead18a;border-radius:12px;padding:10px 12px;font-size:12px;line-height:1.4}
+@media(max-width:700px){.grid{grid-template-columns:1fr}.excel{grid-column:auto}}
+@media print{.bar,.menu,.note{display:none!important}.wrap{padding:0;background:#fff}.page{box-shadow:none;transform:none!important;margin:0}.wl{box-shadow:none}}
+</style>
+</head>
+<body>
+<div class="bar"><b id="title">Dokumente</b><div class="right"><button class="print" id="printBtn" style="display:none">🖨️ Drucken</button><a class="close" href="./index.html">✕ Schließen</a></div></div>
+<div class="wrap"><div id="host"></div></div>
+<script>
+const $=id=>document.getElementById(id);
+const saved=(()=>{try{return JSON.parse(localStorage.getItem('wm_v3_form')||'{}')||{}}catch{return{}}})();
+const train=(()=>{try{return JSON.parse(localStorage.getItem('wm_v3_train')||'[]')||[]}catch{return[]}})();
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const n=v=>Number(v)||0;
+const sum=k=>train.reduce((a,w)=>a+n(w?.[k]),0);
+const yes=id=>!!saved[id];
+const dateDE=()=>{const x=saved.date||'';if(!x)return'';const[y,m,d]=x.split('-');return d+'.'+m+'.'+y};
+const first=()=>train[0]?.number||'';
+const last=()=>train.at(-1)?.number||'';
+const last4=x=>String(x||'').replace(/\D/g,'').slice(-5,-1);
+const danger=()=>train.some(w=>w.unNr||w.ridGef)||yes('dangerous');
+const dangerText=()=>{const u=[...new Set(train.map(w=>w.unNr).filter(Boolean))].map(x=>'UN '+x);const g=[...new Set(train.map(w=>w.ridGef).filter(Boolean))].map(x=>'Gef. '+x);return [...u,...g].join('  ')};
+function F(x,y,w,h,text,cls=''){return `<div class="f ${cls}" style="left:${x}%;top:${y}%;width:${w}%;height:${h}%">${esc(text)}</div>`}
+function X(x,y,on){return on?F(x,y,4,3,'X','x bold'):''}
+function stamp(id){return yes(id)?`${dateDE()} - ${saved.time||'__:__'} - ${saved.createdBy||''}`:''}
+function buildBrems(){
+ const total=sum('total'),bp=sum('brakeP'),bg=sum('brakeG'),bw=bp||bg,bh=total?Math.floor(bw/total*100):0,min=n(saved.minBrakePercent),fehl=min?Math.max(0,min-bh):'';
+ return `<div class="page" id="brems"><img class="tpl" src="brems_template.png">
+ ${F(23,1.7,18,3,saved.trainNo||'','bold')}${F(55,1.7,15,3,dateDE())}${F(77,1.7,20,3,saved.from||'')}
+ ${F(67,14.5,10,2.3,total?total.toFixed(0):'')}${F(67,17,10,2.3,bw?bw.toFixed(0):'')}${F(67,19.6,10,2.3,sum('axles')||'')}
+ ${F(67,22.2,10,2.3,min||'')}${F(84,24.7,11,2.3,bh||'')}${F(84,27.2,11,2.3,fehl)}
+ ${F(66,32.2,29,2.4,last())}${F(67,47.6,10,2.3,sum('length')?sum('length').toFixed(0):'')}${F(67,50.2,10,2.3,sum('effectiveBrakes')||'')}
+ ${F(68,89.7,9,2.2,danger()?'ja':'nein')}${F(26,96,36,2.6,saved.createdBy||'','left bold')}
+ </div>`;
+}
+function buildWU(){
+ const special=saved.specialNotes||dangerText();
+ return `<div class="page" id="wu"><img class="tpl" src="wu_template.png">
+ ${F(20,13.7,17,3,saved.trainNo||'','bold')}${F(43,13.7,17,3,dateDE())}${F(72,13.7,25,3,saved.createdBy||'')}
+ ${F(20,19,17,3,saved.to||'')}${F(43,19,17,3,saved.time||'')}${F(72,20.4,25,4,saved.docOrderNo||'')}
+ ${F(20,24.2,17,3,train.length||'')}${F(43,24.2,17,3,saved.docLocation||'')}${F(20,29.3,17,3,sum('axles')||'')}${F(43,29.3,17,3,saved.docTrack||'')}
+ ${X(31.5,35.8,yes('schluss'))}${X(31.5,40.8,yes('fullBrake'))}${F(79,40.7,18,3,saved.fullBrakeTime||'')}${F(15,44.7,70,3,saved.reason||'','left bold')}${X(18.3,49.5,danger())}
+ ${F(27,56.4,42,3,first())}${F(27,61,42,3,last())}${F(20,66.7,77,5,special,'left bold')}
+ ${F(12,95,25,3,saved.createdBy||'')}${F(73,94,24,4,`${saved.docLocation||''}${saved.docLocation?', ':''}${dateDE()}`)}
+ </div>`;
+}
+function buildMelde(){
+ return `<div class="page" id="melde"><img class="tpl" src="melde_template.png">
+ ${F(12,4.6,19,3,saved.from||'')}${F(37,4.6,9,3,saved.docTrack||'')}${F(12,9,19,3,dateDE())}${F(37,9,9,3,saved.time||'')}
+ ${F(12,15.6,10,3,sum('total')?sum('total').toFixed(0):'')}${F(22,15.6,8,3,sum('axles')||'')}${F(37,15.6,13,3,saved.createdBy||'')}
+ ${F(3,24.6,22,5,last4(first()),'bold')}${F(29,24.6,22,5,last4(last()),'bold')}
+ ${F(54,3.2,17,3,saved.trainNo||'','bold')}${F(77,2,20,3,dateDE())}${F(54,6.8,17,3,saved.from||'')}${F(77,6.8,20,3,saved.docTrack||'')}
+ ${X(53.5,14.4,yes('docsComplete'))}${X(75.5,14.4,yes('ordersComplete'))}${X(53.5,17.8,yes('withoutDocs'))}${X(75.5,17.8,yes('permanentOrder'))}
+ ${F(54,22,21,6,first(),'left')}${F(77,22,21,6,last(),'left')}${F(77,31.8,18,3,saved.createdBy||'')}
+ ${F(78,42,20,3.5,stamp('mCoupling'))}${F(78,46.5,20,3.5,stamp('mTechnical'))}${F(78,50.7,20,3.5,stamp('mFullBrake'))}${F(78,55.2,20,3.5,stamp('mEndSignal'))}
+ ${F(78,61.2,20,3.5,stamp('mOrderNotified'))}${F(78,67,20,3.5,stamp('mLocoCoupled'))}${F(78,71.5,20,3.5,stamp('mSecuringRemoved'))}${F(78,76,20,3.5,stamp('mSimpleBrake'))}
+ </div>`;
+}
+function buildWagenliste(){
+ const rows=train.map((w,i)=>`<tr><td>${i+1}</td><td>${esc(w.number||'')}</td><td>${w.axles||''}</td><td>${w.length||''}</td><td>${w.load||''}</td><td>${w.total||''}</td><td>${esc(w.brakeShoe||'')}</td><td>${w.brakeP||''}</td><td>${w.brakeG||''}</td><td>${w.handBrake||''}</td><td>${esc(w.ridGef||'')}</td><td>${esc(w.unNr||'')}</td><td>${esc(w.destination||saved.to||'')}</td><td>${w.vmax||''}</td><td class="left">${esc(w.remarks||'')}</td></tr>`).join('');
+ return `<div class="page wl"><div class="wlHead"><div><h2>Wagenliste</h2><div style="font-size:8px">Original-Excel ist die maßgebliche Ausgabe</div></div><img src="logo.jpg"></div><div class="wlMeta"><b>Zugnummer: ${esc(saved.trainNo||'')}</b><b>Gültig ab: ${esc(saved.from||'')}</b><b>Gültig bis: ${esc(saved.to||'')}</b></div><table><tr><th>Pos.</th><th>Nummer</th><th>Radsätze</th><th>Länge</th><th>Ladung</th><th>Gesamt</th><th>Sohle</th><th>P</th><th>G</th><th>Hbr</th><th>Gef.</th><th>UN</th><th>Ziel</th><th>Vmax</th><th>Bemerkungen</th></tr>${rows}<tr><th colspan="2">Summe</th><th>${sum('axles')}</th><th>${sum('length').toFixed(2)}</th><th>${sum('load').toFixed(2)}</th><th>${sum('total').toFixed(2)}</th><th></th><th>${sum('brakeP').toFixed(0)}</th><th>${sum('brakeG').toFixed(0)}</th><th colspan="6"></th></tr></table></div>`;
+}
+function menu(){return `<div class="menu"><h2>Original-Dokumente</h2><p>Bremszettel, WU/ZP und Meldezettel verwenden jetzt die Originalvorlagen. Für die Wagenliste ist die erzeugte Original-Excel-Datei die maßgebliche Ausgabe.</p><div class="grid"><a href="?id=wagenliste">📋 Wagenliste</a><a href="?id=bremszettel">🧾 Bremszettel</a><a href="?id=wu">🛠️ WU / ZP</a><a href="?id=meldezettel">📝 Meldezettel</a><a class="excel" href="./index.html#dokumente">📊 Original-Excel in der App erstellen</a></div></div>`}
+function fit(){const p=document.querySelector('.page'),w=document.querySelector('.wrap');if(!p||!w)return;p.style.transform='none';p.style.marginBottom='0';const r=p.getBoundingClientRect();const scale=Math.min(1,(w.clientWidth-24)/r.width);p.style.transform=`scale(${scale})`;p.style.marginBottom=`${r.height*(scale-1)}px`}
+const id=new URLSearchParams(location.search).get('id');const names={wagenliste:'Wagenliste',bremszettel:'Bremszettel',wu:'WU / ZP-Protokoll',meldezettel:'Meldezettel'};
+if(!id){$('host').innerHTML=menu()}else{$('title').textContent=names[id]||'Dokument';$('printBtn').style.display='block';$('printBtn').onclick=()=>window.print();$('host').innerHTML=id==='bremszettel'?buildBrems():id==='wu'?buildWU():id==='meldezettel'?buildMelde():buildWagenliste();setTimeout(fit,80);addEventListener('resize',fit)}
+</script>
+</body>
+</html>
