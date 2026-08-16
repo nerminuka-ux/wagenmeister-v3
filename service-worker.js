@@ -1,6 +1,6 @@
-const CACHE='wm-v3-20260816-0548';
-const VERSION='20260816-0548';
-const ASSETS=['./','./index.html','./template-store.js','./original-export.js','./hotfix-documents.js','./wagons.json','./logo.jpg','./manifest.webmanifest','./icon-180.png','./icon-192.png','./icon-512.png'];
+const CACHE='wm-v3-20260816-0552';
+const VERSION='20260816-0552';
+const ASSETS=['./','./index.html','./documents.html','./template-store.js','./original-export.js','./hotfix-documents.js','./wagons.json','./logo.jpg','./manifest.webmanifest','./icon-180.png','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).catch(()=>{}).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil((async()=>{
  const keys=await caches.keys();
@@ -12,15 +12,14 @@ self.addEventListener('activate',e=>e.waitUntil((async()=>{
 self.addEventListener('fetch',e=>{
  if(e.request.method!=='GET')return;
  const req=e.request,url=new URL(req.url);
- const isPage=req.mode==='navigate'||url.pathname.endsWith('/index.html')||url.pathname.endsWith('/wagenmeister-v3/');
+ const isPage=req.mode==='navigate'||url.pathname.endsWith('/index.html')||url.pathname.endsWith('/documents.html')||url.pathname.endsWith('/wagenmeister-v3/');
  if(isPage){
   e.respondWith(fetch(req,{cache:'no-store'}).then(async r=>{
    let out=r;
    try{
     const ct=r.headers.get('content-type')||'';
-    if(r.ok&&ct.includes('text/html')){
+    if(r.ok&&ct.includes('text/html')&&!url.pathname.endsWith('/documents.html')){
      let html=await r.text();
-     html=html.replace(/w\.document\.write\(`<!doctype html><html><head><meta charset="utf-8">\$\{styles\}<\/head><body style="background:#fff;margin:0">\$\{el\.outerHTML\}<script>setTimeout\(\(\)=>window\.print\(\),450\)<\\\/script><\/body><\/html>`\);\s*w\.document\.close\(\);/,'w.document.write(`<!doctype html><html><head><meta charset="utf-8">${styles}</head><body style="background:#fff;margin:0">${el.outerHTML}</body></html>`);\n w.document.close();\n setTimeout(()=>{try{w.print()}catch{}},450);');
      const scripts=[];
      if(!html.includes('template-store.js'))scripts.push('<script src="./template-store.js?v='+VERSION+'"></script>');
      if(!html.includes('original-export.js'))scripts.push('<script src="./original-export.js?v='+VERSION+'"></script>');
