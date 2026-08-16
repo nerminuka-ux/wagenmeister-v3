@@ -1,8 +1,8 @@
 (()=>{
 'use strict';
 const $=id=>document.getElementById(id);
-const VERSION='20260816-0545';
-const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const VERSION='20260816-0548';
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m]));
 const val=id=>$(id)?.value||'';
 const checked=id=>!!$(id)?.checked;
 function trainData(){try{return JSON.parse(localStorage.getItem('wm_v3_train')||'[]')||[]}catch{return[]}}
@@ -30,13 +30,24 @@ function buildDocSafe(id){try{if(typeof window.buildDoc==='function')return wind
 function safeDerived(){try{window.updateDerived?.()}catch(e){console.warn('safeDerived',e)}}
 function forceShow(id){const target=$(id);if(!target)return false;document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));target.classList.add('active');document.querySelectorAll('.nav').forEach(n=>n.classList.toggle('active',n.dataset.view===id));safeDerived();window.scrollTo({top:0,behavior:'auto'});return true}
 function installNavigationFix(){document.querySelectorAll('.nav[data-view]').forEach(btn=>{btn.dataset.wmFixed=VERSION;btn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();forceShow(btn.dataset.view)},true)})}
+function removeLeakedCode(){
+ try{
+  const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+  const remove=[];let n;
+  while((n=walker.nextNode())){
+   const s=n.nodeValue||'';
+   if(s.includes('async function makePDFBlob')||s.includes('function excelRows')||s.includes('w.document.close();')||s.includes('window.sharePDF=async')) remove.push(n);
+  }
+  remove.forEach(n=>n.remove());
+ }catch(e){console.warn('cleanup leaked code',e)}
+}
 function ensureModal(){let modal=$('wmDocModal');if(modal)return modal;const style=document.createElement('style');style.textContent=`#wmDocModal{position:fixed;inset:0;z-index:100000;background:#eef1ed;display:none;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}#wmDocModal.open{display:flex}#wmDocModal .wmbar{background:#123f3e;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:10px 12px}#wmDocModal .wmactions{display:flex;gap:8px}#wmDocModal button{border:0;border-radius:10px;padding:10px 12px;font-weight:800}#wmDocModal .wmclose{background:#fff;color:#123f3e;font-size:20px;min-width:48px}#wmDocModal .wmaction{background:rgba(255,255,255,.14);color:#fff}#wmDocModal .wmscroll{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:12px}#wmDocModal .wmstage{background:#fff;margin:auto;box-shadow:0 3px 18px rgba(0,0,0,.18);width:max-content;transform-origin:top left}#wmFixBadge{position:fixed;right:8px;bottom:calc(72px + env(safe-area-inset-bottom));z-index:99998;background:#123f3e;color:#fff;border-radius:999px;padding:4px 7px;font:700 9px Arial;opacity:.65;pointer-events:none}`;document.head.appendChild(style);modal=document.createElement('div');modal.id='wmDocModal';modal.innerHTML=`<div class="wmbar"><b id="wmDocTitle">Dokument</b><div class="wmactions"><button class="wmaction" id="wmDocPrint">🖨️ Drucken</button><button class="wmclose" id="wmDocClose">✕</button></div></div><div class="wmscroll" id="wmDocScroll"><div class="wmstage" id="wmDocStage"></div></div>`;document.body.appendChild(modal);$('wmDocClose').onclick=closeDocumentViewer;$('wmDocPrint').onclick=()=>window.print();return modal}
 function fitStage(){const scroll=$('wmDocScroll'),stage=$('wmDocStage');if(!scroll||!stage||!stage.firstElementChild)return;stage.style.transform='none';stage.style.marginBottom='0';const r=stage.firstElementChild.getBoundingClientRect();const scale=Math.min(1,Math.max(280,scroll.clientWidth-24)/r.width);stage.style.transform=`scale(${scale})`;stage.style.marginBottom=`${r.height*(scale-1)}px`}
 function closeDocumentViewer(){const m=$('wmDocModal');if(m)m.classList.remove('open');document.body.style.overflow=''}
 window.closeDocumentViewer=closeDocumentViewer;
 window.openDocument=id=>{try{const modal=ensureModal(),stage=$('wmDocStage');stage.innerHTML=buildDocSafe(id);$('wmDocTitle').textContent=titleFor(id);modal.classList.add('open');document.body.style.overflow='hidden';setTimeout(fitStage,80)}catch(e){alert('Dokument konnte nicht geöffnet werden: '+(e?.message||e))}};
 function markLoaded(){let b=$('wmFixBadge');if(!b){b=document.createElement('div');b.id='wmFixBadge';document.body.appendChild(b)}b.textContent='WM '+VERSION.slice(-4)}
-function init(){installNavigationFix();ensureModal();markLoaded()}
+function init(){removeLeakedCode();installNavigationFix();ensureModal();markLoaded();setTimeout(removeLeakedCode,300)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
-setTimeout(installNavigationFix,600);window.addEventListener('pageshow',installNavigationFix);window.addEventListener('resize',()=>{if($('wmDocModal')?.classList.contains('open'))fitStage()});
+setTimeout(installNavigationFix,600);window.addEventListener('pageshow',()=>{removeLeakedCode();installNavigationFix()});window.addEventListener('resize',()=>{if($('wmDocModal')?.classList.contains('open'))fitStage()});
 })();
