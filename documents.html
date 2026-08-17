@@ -33,7 +33,7 @@ body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,
 const $=id=>document.getElementById(id);
 const saved=(()=>{try{return JSON.parse(localStorage.getItem('wm_v3_form')||'{}')||{}}catch{return{}}})();
 const train=(()=>{try{return JSON.parse(localStorage.getItem('wm_v3_train')||'[]')||[]}catch{return[]}})();
-const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m]));
 const n=v=>Number(v)||0;
 const sum=k=>train.reduce((a,w)=>a+n(w?.[k]),0);
 const yes=id=>!!saved[id];
@@ -41,7 +41,7 @@ const activeMode=w=>String(w?.brakeMode||saved.trainBrakeMode||'P').toUpperCase(
 const dateDE=()=>{const x=saved.date||'';if(!x)return'';const[y,m,d]=x.split('-');return d+'.'+m+'.'+y};
 const first=()=>train[0]?.number||'';
 const last=()=>train.at(-1)?.number||'';
-const last4=x=>String(x||'').replace(/\D/g,'').slice(-5,-1);
+const last4=x=>String(x||'').replace(/\D/g,'').slice(-4);
 const danger=()=>train.some(w=>w.unNr||w.ridGef)||yes('dangerous');
 const dangerText=()=>{const u=[...new Set(train.map(w=>w.unNr).filter(Boolean))].map(x=>'UN '+x);const g=[...new Set(train.map(w=>w.ridGef).filter(Boolean))].map(x=>'Gef. '+x);return [...u,...g].join('  ')};
 function F(x,y,w,h,text,cls=''){return `<div class="f ${cls}" style="left:${x}%;top:${y}%;width:${w}%;height:${h}%">${esc(text)}</div>`}
