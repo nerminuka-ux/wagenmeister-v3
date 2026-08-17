@@ -45,15 +45,15 @@ function fillWagenliste(doc){
   setCell(doc,'P'+r,w.ridGef||'');setCell(doc,'Q'+r,w.unNr||'');setCell(doc,'R'+r,w.gefZettel||'');setCell(doc,'S'+r,w.special==='1'?1:0,'number');
   setCell(doc,'T'+r,w.destination||value('to'));setCell(doc,'U'+r,num(w.vmax),'number');setCell(doc,'V'+r,w.routeClass||'');setCell(doc,'W'+r,w.remarks||'');
  });
- // Original-Summen und Bremsberechnung wiederherstellen.
  setFormula(doc,'B37','COUNT(B7:F36)');setFormula(doc,'G37','SUM(G7:G36)');setFormula(doc,'H37','SUM(H7:H36)');setFormula(doc,'I37','SUM(I7:I36)');setFormula(doc,'J37','ROUNDUP(SUM(J7:J36),0)');setFormula(doc,'K37','COUNTA(K7:K36)');
  setFormula(doc,'L37','ROUNDDOWN(SUM(L7:L36),0)');setFormula(doc,'M37','SUM(M7:M36)');setFormula(doc,'N37','SUM(N7:N36)');setFormula(doc,'O37','SUM(O7:O36)');
- setCell(doc,'M38',-0.25,'number');setFormula(doc,'L39','IF(L37>0,L37*(100%+L38),L37)');setFormula(doc,'M39','IF(M37>0,M37*(100%+M38),M37)');setFormula(doc,'L40','L39+M39');
+ setCell(doc,'M38',-0.25,'number');
+ // Bremslogik: P bleibt voll wirksam, nur G wird um 25 % reduziert.
+ setFormula(doc,'L39','L37');setFormula(doc,'M39','IF(M37>0,M37*(100%+M38),M37)');setFormula(doc,'L40','L39+M39');
  setCell(doc,'A42',dateDE());setCell(doc,'G42',timeVal());setCell(doc,'J42',value('createdBy'));
 }
 function fillBremszettel(doc){
  const rr=rows(),p=rr.reduce((a,w)=>a+(activeMode(w)==='P'?(Number(w.brakeP)||0):0),0),g=rr.reduce((a,w)=>a+(activeMode(w)==='G'?(Number(w.brakeG)||0):0),0),bw=Math.floor(p)+(g*0.75),total=sum('total');
- // Diese Felder bleiben bewusst Original-Excel-Formeln: I1,R1,W1,U8,U9,U10,U15,U17,U19,U21,J43.
  const min=Number(value('minBrakePercent'))||0,bh=total?Math.floor((bw/total)*100):0;
  setCell(doc,'U11',min||'','number');setCell(doc,'U12',bh||'','number');setCell(doc,'U14',min?Math.max(0,min-bh):'','number');
  setCell(doc,'U16',0,'number');setCell(doc,'U18',rr.filter(w=>String(w.brakeShoe||'').toUpperCase()==='D').length,'number');setCell(doc,'U20',rr.filter(w=>String(w.remarks||'').toLowerCase().includes('matrossow')).length,'number');
@@ -61,7 +61,6 @@ function fillBremszettel(doc){
 }
 function fillWU(doc){
  const rr=rows(),danger=checked('dangerous')||rr.some(w=>w.unNr||w.ridGef);
- // Zugnummer, Datum, Ziel, Uhrzeit, Wagenanzahl, Achsen, erstes/letztes Fahrzeug und Datum unten bleiben Originalformeln.
  setCell(doc,'Y9',value('createdBy'));setCell(doc,'Y11',value('docOrderNo'));setCell(doc,'P13',value('docLocation'));setCell(doc,'P15',value('docTrack'));
  setCell(doc,'L18',checked('schluss')?'X':'');setCell(doc,'L20',checked('fullBrake')?'X':'');if(value('fullBrakeTime'))setCell(doc,'AA20',value('fullBrakeTime'));
  setCell(doc,'F22',value('reason'));setCell(doc,'G24',danger?'X':'');setCell(doc,'I31',value('specialNotes')||dangerText());setCell(doc,'B52',value('createdBy'));
@@ -74,13 +73,13 @@ function fillMeldezettel(doc){
  [['T18','mCoupling'],['T19','mTechnical'],['T20','mFullBrake'],['T21','mEndSignal'],['T22','mOrderNotified'],['T24','mLocoCoupled'],['T25','mSecuringRemoved'],['T26','mSimpleBrake']].forEach(([c,id])=>setCell(doc,c,taskStamp(id)||'___.___.____ - ___:___ - ______________'));
 }
 async function build(){
- await ensureJSZip();const r=await fetch(TEMPLATE+'?v=20260816-2315',{cache:'no-store'});if(!r.ok)throw new Error('Originalvorlage fehlt ('+r.status+')');const zip=await JSZip.loadAsync(await r.arrayBuffer());
+ await ensureJSZip();const r=await fetch(TEMPLATE+'?v=20260817-2233',{cache:'no-store'});if(!r.ok)throw new Error('Originalvorlage fehlt ('+r.status+')');const zip=await JSZip.loadAsync(await r.arrayBuffer());
  for(const [path,fn] of [['xl/worksheets/sheet1.xml',fillWagenliste],['xl/worksheets/sheet3.xml',fillBremszettel],['xl/worksheets/sheet4.xml',fillWU],['xl/worksheets/sheet5.xml',fillMeldezettel]]){const doc=await readSheet(zip,path);if(doc.getElementsByTagName('parsererror').length)throw new Error('Excel-Blatt konnte nicht gelesen werden: '+path);fn(doc);writeSheet(zip,path,doc)}
  const wbf=zip.file('xl/workbook.xml');if(wbf)forceRecalc(zip,await wbf.async('text'));return zip.generateAsync({type:'blob',mimeType:XLSX_TYPE,compression:'DEFLATE'});
 }
 async function share(blob,name){const file=new File([blob],name,{type:XLSX_TYPE});try{if(navigator.canShare?.({files:[file]})){await navigator.share({files:[file],title:name});return}}catch(e){if(e?.name==='AbortError')return;throw e}const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000)}
 async function run(btn){const old=btn.textContent;btn.disabled=true;btn.textContent='Original-Excel wird geprüft …';try{await share(await build(),`GELSEN-LOG_${value('trainNo')||'Zug'}_Original.xlsx`)}catch(e){alert('Original-Excel konnte nicht erstellt werden: '+(e?.message||e))}finally{btn.disabled=false;btn.textContent=old}}
-function install(){const card=[...document.querySelectorAll('#dokumente .title h2')].find(x=>x.textContent.includes('Dokumente erstellen'))?.closest('.card');if(!card)return;const group=card.querySelectorAll('.docButtons')[2];if(!group)return;group.innerHTML='';const b=document.createElement('button');b.className='btn gold';b.style.cssText='width:100%;font-size:16px;padding:14px';b.textContent='📊 Original-Excel erstellen';b.addEventListener('click',()=>run(b));group.appendChild(b);const note=card.querySelector('.note');if(note)note.textContent='Die Original-Excel wird nur in den vorgesehenen Eingabefeldern befüllt. Originalformeln für Summen, Bremszettel, WU/ZP und Meldezettel bleiben erhalten.'}
+function install(){const card=[...document.querySelectorAll('#dokumente .title h2')].find(x=>x.textContent.includes('Dokumente erstellen'))?.closest('.card');if(!card)return;const group=card.querySelectorAll('.docButtons')[2];if(!group)return;group.innerHTML='';const b=document.createElement('button');b.className='btn gold';b.style.cssText='width:100%;font-size:16px;padding:14px';b.textContent='📊 Original-Excel erstellen';b.addEventListener('click',()=>run(b));group.appendChild(b);const note=card.querySelector('.note');if(note)note.textContent='Die Original-Excel wird nur in den vorgesehenen Eingabefeldern befüllt. P bleibt voll wirksam; nur G wird um 25 % reduziert. Originalformeln und Drucklayout bleiben erhalten.'}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);else install();
 window.buildOriginalExcelV3=build;
 })();
