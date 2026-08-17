@@ -37,6 +37,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&
 const n=v=>Number(v)||0;
 const sum=k=>train.reduce((a,w)=>a+n(w?.[k]),0);
 const yes=id=>!!saved[id];
+const activeMode=w=>String(w?.brakeMode||saved.trainBrakeMode||'P').toUpperCase()==='G'?'G':'P';
 const dateDE=()=>{const x=saved.date||'';if(!x)return'';const[y,m,d]=x.split('-');return d+'.'+m+'.'+y};
 const first=()=>train[0]?.number||'';
 const last=()=>train.at(-1)?.number||'';
@@ -47,10 +48,14 @@ function F(x,y,w,h,text,cls=''){return `<div class="f ${cls}" style="left:${x}%;
 function X(x,y,on){return on?F(x,y,4,3,'X','x bold'):''}
 function stamp(id){return yes(id)?`${dateDE()} - ${saved.time||'__:__'} - ${saved.createdBy||''}`:''}
 function buildBrems(){
- const total=sum('total'),bp=sum('brakeP'),bg=sum('brakeG'),bw=bp||bg,bh=total?Math.floor(bw/total*100):0,min=n(saved.minBrakePercent),fehl=min?Math.max(0,min-bh):'';
+ const total=sum('total');
+ const p=train.reduce((a,w)=>a+(activeMode(w)==='P'?n(w.brakeP):0),0);
+ const g=train.reduce((a,w)=>a+(activeMode(w)==='G'?n(w.brakeG):0),0);
+ const bw=Math.floor(p)+(g*0.75);
+ const bh=total?Math.floor(bw/total*100):0,min=n(saved.minBrakePercent),fehl=min?Math.max(0,min-bh):'';
  return `<div class="page" id="brems"><img class="tpl" src="brems_template.png">
  ${F(23,1.7,18,3,saved.trainNo||'','bold')}${F(55,1.7,15,3,dateDE())}${F(77,1.7,20,3,saved.from||'')}
- ${F(67,14.5,10,2.3,total?total.toFixed(0):'')}${F(67,17,10,2.3,bw?bw.toFixed(0):'')}${F(67,19.6,10,2.3,sum('axles')||'')}
+ ${F(67,14.5,10,2.3,total?total.toFixed(0):'')}${F(67,17,10,2.3,bw?Math.floor(bw).toFixed(0):'')}${F(67,19.6,10,2.3,sum('axles')||'')}
  ${F(67,22.2,10,2.3,min||'')}${F(84,24.7,11,2.3,bh||'')}${F(84,27.2,11,2.3,fehl)}
  ${F(66,32.2,29,2.4,last())}${F(67,47.6,10,2.3,sum('length')?sum('length').toFixed(0):'')}${F(67,50.2,10,2.3,sum('effectiveBrakes')||'')}
  ${F(68,89.7,9,2.2,danger()?'ja':'nein')}${F(26,96,36,2.6,saved.createdBy||'','left bold')}
