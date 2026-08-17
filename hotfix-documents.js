@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
 const $=id=>document.getElementById(id);
-const VERSION='20260817-2233';
+const VERSION='20260817-2240';
 function captureForm(){
  try{
   const out={};
@@ -19,6 +19,15 @@ function installNavigationFix(){document.querySelectorAll('.nav[data-view]').for
 function removeLeakedCode(){try{const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);const remove=[];let n;while((n=walker.nextNode())){const s=n.nodeValue||'';if(s.includes('async function makePDFBlob')||s.includes('function excelRows')||s.includes('w.document.close();')||s.includes('window.sharePDF=async'))remove.push(n)}remove.forEach(n=>n.remove())}catch{}}
 window.openDocument=id=>{captureForm();location.href='./documents.html?id='+encodeURIComponent(id)+'&v='+VERSION};
 function bindDocumentButtons(){document.querySelectorAll('button').forEach(btn=>{const txt=(btn.textContent||'').toLowerCase();let id='';if(txt.includes('wagenliste ansehen')||txt.includes('wagenliste öffnen'))id='wagenliste';else if(txt.includes('bremszettel ansehen'))id='bremszettel';else if(txt.includes('wu / zp ansehen')||txt.includes('wu ansehen'))id='wu';else if(txt.includes('meldezettel ansehen'))id='meldezettel';if(!id)return;btn.onclick=null;btn.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();window.openDocument(id)},true)})}
+function normLocal(v){return String(v||'').replace(/\D/g,'')}
+function ensureBrakeModes(){
+ try{
+  if(typeof train==='undefined'||!Array.isArray(train))return;
+  let changed=false;
+  train.forEach(w=>{const m=String(w?.brakeMode||'').toUpperCase();if(m!=='P'&&m!=='G'){w.brakeMode='P';changed=true;}});
+  if(changed)localStorage.setItem('wm_v3_train',JSON.stringify(train));
+ }catch{}
+}
 function installBrakeMode(){
  const drawer=$('drawer');if(!drawer||$('brakeMode'))return;
  const grids=drawer.querySelectorAll('.grid3');if(!grids.length)return;
@@ -26,21 +35,47 @@ function installBrakeMode(){
  box.innerHTML='<label>Bremsstellung</label><select id="brakeMode"><option value="P">P</option><option value="G">G</option></select>';
  grids[0].appendChild(box);
  const add=$('add');if(add){
-  add.addEventListener('click',()=>{const mode=$('brakeMode')?.value==='G'?'G':'P';setTimeout(()=>{try{if(typeof train!=='undefined'&&Array.isArray(train)&&train.length){train[train.length-1].brakeMode=mode;localStorage.setItem('wm_v3_train',JSON.stringify(train));try{window.renderTrain?.()}catch{}try{window.updateDerived?.()}catch{}}}catch{}},0)});
+  add.addEventListener('click',()=>{const mode=$('brakeMode')?.value==='G'?'G':'P';setTimeout(()=>{try{if(typeof train!=='undefined'&&Array.isArray(train)&&train.length){train[train.length-1].brakeMode=mode;localStorage.setItem('wm_v3_train',JSON.stringify(train));try{window.renderTrain?.()}catch{}try{window.updateDerived?.()}catch{}setTimeout(decorateBrakeModes,0)}}catch{}},0)});
  }
- // Bei jeder neuen Wagenerfassung ist P die sichere Standardauswahl; G muss bewusst gewählt werden.
  const search=$('wagonSearch');if(search)search.addEventListener('input',()=>{if(normLocal(search.value).length<12&&$('brakeMode'))$('brakeMode').value='P'});
 }
-function normLocal(v){return String(v||'').replace(/\D/g,'')}
+window.wmToggleBrakeMode=i=>{
+ try{
+  if(typeof train==='undefined'||!Array.isArray(train)||!train[i])return;
+  train[i].brakeMode=String(train[i].brakeMode||'P').toUpperCase()==='G'?'P':'G';
+  localStorage.setItem('wm_v3_train',JSON.stringify(train));
+  try{window.renderTrain?.()}catch{}
+  try{window.updateDerived?.()}catch{}
+  setTimeout(decorateBrakeModes,0);
+ }catch{}
+};
 function decorateBrakeModes(){
  try{
+  ensureBrakeModes();
   if(typeof train==='undefined'||!Array.isArray(train))return;
   const rows=[...document.querySelectorAll('#list .wagon')];
-  rows.forEach((el,i)=>{const meta=el.querySelector('.meta');if(!meta||!train[i])return;const mode=String(train[i].brakeMode||'P').toUpperCase()==='G'?'G':'P';if(!meta.textContent.includes(' · Bremse '+mode))meta.textContent+=' · Bremse '+mode;});
+  rows.forEach((el,i)=>{
+   if(!train[i])return;
+   const meta=el.querySelector('.meta');
+   const mode=String(train[i].brakeMode||'P').toUpperCase()==='G'?'G':'P';
+   if(meta){meta.textContent=meta.textContent.replace(/ · Bremse [PG]/g,'')+' · Bremse '+mode;}
+   const tools=el.querySelector('.wagonTools');
+   if(tools&&!tools.querySelector('.wmBrakeToggle')){
+    const b=document.createElement('button');b.className='btn secondary wmBrakeToggle';b.type='button';b.style.cssText='min-width:42px;font-weight:900;padding:8px';
+    b.onclick=e=>{e.preventDefault();e.stopPropagation();window.wmToggleBrakeMode(i)};
+    tools.insertBefore(b,tools.firstChild);
+   }
+   const b=tools?.querySelector('.wmBrakeToggle');if(b){b.textContent=mode;b.title='Bremsstellung '+mode+' – tippen zum Wechseln';}
+  });
  }catch{}
+}
+function watchTrainList(){
+ const list=$('list');if(!list||list.dataset.wmBrakeObserver)return;
+ list.dataset.wmBrakeObserver='1';
+ new MutationObserver(()=>setTimeout(decorateBrakeModes,0)).observe(list,{childList:true,subtree:true});
 }
 function patchDocumentsPage(){return;}
 function markLoaded(){if(location.pathname.endsWith('/documents.html'))return;let b=$('wmFixBadge');if(!b){b=document.createElement('div');b.id='wmFixBadge';b.style.cssText='position:fixed;right:8px;bottom:calc(72px + env(safe-area-inset-bottom));z-index:99998;background:#123f3e;color:#fff;border-radius:999px;padding:4px 7px;font:700 9px Arial;opacity:.65;pointer-events:none';document.body.appendChild(b)}b.textContent='WM '+VERSION.slice(-4)}
-function init(){if(location.pathname.endsWith('/documents.html')){patchDocumentsPage();return}removeLeakedCode();installSaveFix();installNavigationFix();bindDocumentButtons();installBrakeMode();decorateBrakeModes();markLoaded();setTimeout(()=>{removeLeakedCode();bindDocumentButtons();installBrakeMode();decorateBrakeModes()},300)}
+function init(){if(location.pathname.endsWith('/documents.html')){patchDocumentsPage();return}removeLeakedCode();installSaveFix();installNavigationFix();bindDocumentButtons();ensureBrakeModes();installBrakeMode();watchTrainList();decorateBrakeModes();markLoaded();setTimeout(()=>{removeLeakedCode();bindDocumentButtons();installBrakeMode();decorateBrakeModes()},300)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();window.addEventListener('pageshow',init);
 })();
