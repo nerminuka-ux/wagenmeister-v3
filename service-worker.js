@@ -1,5 +1,5 @@
-const CACHE='wm-v3-20260817-2234';
-const VERSION='20260817-2234';
+const CACHE='wm-v3-20260817-2240';
+const VERSION='20260817-2240';
 const ASSETS=['./','./index.html','./documents.html','./template-store.js','./original-export.js','./excel-export-v2.js','./excel-export-v3.js','./excel-first-last-hotfix.js','./hotfix-documents.js','./wagenmeister-original.xlsx','./wagons.json','./logo.jpg','./brems_template.png','./wu_template.png','./melde_template.png','./manifest.webmanifest','./icon-180.png','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).catch(()=>{}).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil((async()=>{const keys=await caches.keys();await Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)));await self.clients.claim();const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true});for(const client of clients){try{const u=new URL(client.url);if(u.searchParams.get('wmv')!==VERSION){u.searchParams.set('wmv',VERSION);await client.navigate(u.toString())}}catch{}}})()));
