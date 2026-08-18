@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const VERSION='20260819-0140';
+const VERSION='20260819-0147';
 const SHEET_INDEX={wagenliste:0,bremszettel:2,wu:3,meldezettel:4};
 const LABELS={wagenliste:'Wagenliste',bremszettel:'Bremszettel',wu:'WU / ZP',meldezettel:'Meldezettel'};
 function savedForm(){try{return JSON.parse(localStorage.getItem('wm_v3_form')||'{}')||{}}catch{return{}}}
@@ -16,9 +16,17 @@ function ensureHiddenInputs(){
  }
 }
 function loadScript(src){return new Promise((resolve,reject)=>{if([...document.scripts].some(s=>(s.src||'').includes(src.split('?')[0]))){resolve();return}const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=()=>reject(new Error('Datei konnte nicht geladen werden: '+src));document.head.appendChild(s)})}
+function errorText(e){
+ if(!e)return 'Unbekannter Fehler';
+ if(typeof e==='string')return e;
+ if(e.message)return e.message;
+ if(e.error?.message)return e.error.message;
+ if(e.type)return 'Ladefehler ('+e.type+')';
+ try{const s=String(e);return s==='[object Event]'?'Ladefehler einer App-Datei – bitte erneut öffnen':s}catch{return 'Unbekannter Fehler'}
+}
 async function activateSheet(blob,id){
  if(!window.JSZip)return blob;
- const zip=await JSZip.loadAsync(blob);const f=zip.file('xl/workbook.xml');if(!f)return blob;
+ const zip=await JSZip.loadAsync(await blob.arrayBuffer());const f=zip.file('xl/workbook.xml');if(!f)return blob;
  let xml=await f.async('text');const idx=SHEET_INDEX[id]??0;
  if(/<workbookView\b/.test(xml))xml=xml.replace(/<workbookView\b([^>]*)>/,m=>{let x=m;if(/activeTab="\d+"/.test(x))x=x.replace(/activeTab="\d+"/,`activeTab="${idx}"`);else x=x.replace('>',' activeTab="'+idx+'">');if(/firstSheet="\d+"/.test(x))x=x.replace(/firstSheet="\d+"/,`firstSheet="${idx}"`);return x});
  zip.file('xl/workbook.xml',xml);return zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',compression:'DEFLATE'});
@@ -29,28 +37,28 @@ async function share(blob,name){
  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
 }
 async function makeOriginal(id,btn){
- const old=btn.textContent;btn.disabled=true;btn.textContent='Original-Excel wird erstellt …';
+ const old=btn.textContent;btn.disabled=true;btn.textContent='Original-Excel wird geladen …';
  try{
   ensureHiddenInputs();
-  // template-store prüft die XLSX vollständig. Ist die Datei im Repository
-  // beschädigt, wird einmal die echte Originaldatei ausgewählt und dauerhaft
-  // im IndexedDB-Speicher der App hinterlegt.
   if(!window.WMTemplateStore)await loadScript('./template-store.js?v='+VERSION);
+  if(window.WMTemplateStore?.refresh){btn.textContent='Originalvorlage wird geprüft …';try{await window.WMTemplateStore.refresh()}catch{}}
   if(!window.buildOriginalExcel)await loadScript('./original-export.js?v='+VERSION);
   if(!window.buildOriginalExcel)throw new Error('Excel-Funktion nicht geladen');
+  btn.textContent='Original-Excel wird erstellt …';
   let blob=await window.buildOriginalExcel();
+  if(!(blob instanceof Blob)||blob.size<50000)throw new Error('Erzeugte Excel-Datei ist unvollständig');
   blob=await activateSheet(blob,id);
   const s=savedForm();await share(blob,`GELSEN-LOG_${s.trainNo||'Zug'}_${LABELS[id]||id}.xlsx`);
  }catch(e){
   if(e?.name==='AbortError')return;
-  alert('Original-Excel konnte nicht erstellt werden: '+(e?.message||e));
+  alert('Original-Excel konnte nicht erstellt werden: '+errorText(e)+'\n\nWM FIX '+VERSION.slice(-4));
  }finally{btn.disabled=false;btn.textContent=old}
 }
 function installDocumentFallback(){
  if(!location.pathname.endsWith('/documents.html'))return;
  const id=new URLSearchParams(location.search).get('id');if(!id||!(id in SHEET_INDEX))return;
  const host=document.getElementById('host');if(!host)return;
- host.innerHTML=`<div style="max-width:720px;margin:18px auto;background:#fff;border-radius:16px;padding:18px;box-shadow:0 3px 18px rgba(0,0,0,.08)"><h2 style="margin:0 0 8px">${LABELS[id]} – Original</h2><p style="font-size:14px;line-height:1.5;color:#485653">Die echte GELSEN-LOG Excel-Vorlage wird mit deinen gespeicherten Zugdaten gefüllt. Falls die Originalvorlage auf diesem Gerät noch nicht gespeichert ist, wirst du einmal aufgefordert, die richtige XLSX-Datei auszuwählen. Danach merkt sich die App die Vorlage.</p><button id="wmOriginalBtn" style="width:100%;border:0;border-radius:12px;padding:15px;background:#d9ad3d;color:#352a10;font-size:16px;font-weight:900">📊 Original-Excel öffnen</button><div style="text-align:center;margin-top:8px;font-size:11px;color:#6d7774">WM FIX ${VERSION.slice(-4)}</div><a href="./index.html" style="display:block;text-align:center;margin-top:12px;color:#123f3e;font-weight:800;text-decoration:none">← Zur App</a></div>`;
+ host.innerHTML=`<div style="max-width:720px;margin:18px auto;background:#fff;border-radius:16px;padding:18px;box-shadow:0 3px 18px rgba(0,0,0,.08)"><h2 style="margin:0 0 8px">${LABELS[id]} – Original</h2><p style="font-size:14px;line-height:1.5;color:#485653">Die echte GELSEN-LOG Excel-Vorlage wird direkt geprüft und mit deinen gespeicherten Zugdaten gefüllt.</p><button id="wmOriginalBtn" style="width:100%;border:0;border-radius:12px;padding:15px;background:#d9ad3d;color:#352a10;font-size:16px;font-weight:900">📊 Original-Excel öffnen</button><div style="text-align:center;margin-top:8px;font-size:11px;color:#6d7774">WM FIX ${VERSION.slice(-4)}</div><a href="./index.html" style="display:block;text-align:center;margin-top:12px;color:#123f3e;font-weight:800;text-decoration:none">← Zur App</a></div>`;
  const print=document.getElementById('printBtn');if(print)print.style.display='none';
  document.getElementById('wmOriginalBtn').onclick=e=>makeOriginal(id,e.currentTarget);
 }
