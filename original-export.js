@@ -9,6 +9,13 @@ const checked=id=>!!byId(id)?.checked;
 const value=id=>byId(id)?.value??'';
 const trainRows=()=>{ try{return (typeof train!=='undefined'&&Array.isArray(train))?train:[]}catch{return[]} };
 const sum=k=>trainRows().reduce((a,w)=>a+(Number(w?.[k])||0),0);
+const activeMode=w=>String(w?.brakeMode||'P').toUpperCase()==='G'?'G':'P';
+const effectiveBrakeWeight=()=>{
+ const rows=trainRows();
+ const p=rows.reduce((a,w)=>a+(activeMode(w)==='P'?(Number(w?.brakeP)||0):0),0);
+ const g=rows.reduce((a,w)=>a+(activeMode(w)==='G'?(Number(w?.brakeG)||0):0),0);
+ return Math.floor(p)+(g*0.75);
+};
 
 function ensureJSZip(){
  if(window.JSZip)return Promise.resolve();
@@ -71,15 +78,15 @@ function fillWagenliste(doc){
  const cols=['B','G','H','I','J','K','L','M','O','P','Q','R','S','T','U','V','W'];
  for(let r=7;r<=36;r++){for(const col of cols)setCell(doc,col+r,'');}
  trainRows().slice(0,30).forEach((w,i)=>{
-  const r=7+i;
+  const r=7+i,mode=activeMode(w);
   setCell(doc,'B'+r,norm(w.number));
   setCell(doc,'G'+r,num(w.axles),'number');
   setCell(doc,'H'+r,num(w.length),'number');
   setCell(doc,'I'+r,num(w.load),'number');
   setCell(doc,'J'+r,num(w.total),'number');
   setCell(doc,'K'+r,w.brakeShoe||'');
-  setCell(doc,'L'+r,num(w.brakeP),'number');
-  setCell(doc,'M'+r,num(w.brakeG),'number');
+  setCell(doc,'L'+r,mode==='P'?num(w.brakeP):'','number');
+  setCell(doc,'M'+r,mode==='G'?num(w.brakeG):'','number');
   setCell(doc,'O'+r,num(w.handBrake),'number');
   setCell(doc,'P'+r,w.ridGef||'');
   setCell(doc,'Q'+r,w.unNr||'');
@@ -95,10 +102,10 @@ function fillWagenliste(doc){
  setCell(doc,'J42',value('createdBy'));
 }
 function fillBremszettel(doc){
- const rows=trainRows(),total=sum('total'),bp=sum('brakeP'),bg=sum('brakeG'),bw=bp+bg,ax=sum('axles'),len=sum('length');
+ const rows=trainRows(),total=sum('total'),bw=effectiveBrakeWeight(),ax=sum('axles'),len=sum('length');
  const min=Number(value('minBrakePercent'))||0;const bh=total?Math.floor((bw/total)*100):0;
  setFormulaResult(doc,'I1',value('trainNo'));setFormulaResult(doc,'R1',dateDE());setFormulaResult(doc,'W1',value('from'));
- setFormulaResult(doc,'U8',total,'number');setFormulaResult(doc,'U9',bw,'number');setFormulaResult(doc,'U10',ax,'number');
+ setFormulaResult(doc,'U8',total,'number');setFormulaResult(doc,'U9',Math.floor(bw),'number');setFormulaResult(doc,'U10',ax,'number');
  setCell(doc,'U11',min||'','number');setCell(doc,'U12',bh||'','number');setCell(doc,'U14',min?Math.max(0,min-bh):'','number');
  setFormulaResult(doc,'U15',rows.at(-1)?.number||'');
  setCell(doc,'U16',0,'number');setFormulaResult(doc,'U17',rows.length,'number');
@@ -135,7 +142,7 @@ function fillMeldezettel(doc){
 
 async function buildOriginalExcel(){
  await ensureJSZip();
- const r=await fetch(TEMPLATE+'?v=20260816-0431',{cache:'no-store'});if(!r.ok)throw new Error('Originalvorlage fehlt im Repository ('+r.status+')');
+ const r=await fetch(TEMPLATE+'?v=20260818-1340',{cache:'no-store'});if(!r.ok)throw new Error('Originalvorlage fehlt im Repository ('+r.status+')');
  const zip=await JSZip.loadAsync(await r.arrayBuffer());
  const specs=[['xl/worksheets/sheet1.xml',fillWagenliste],['xl/worksheets/sheet3.xml',fillBremszettel],['xl/worksheets/sheet4.xml',fillWU],['xl/worksheets/sheet5.xml',fillMeldezettel]];
  for(const [path,fn] of specs){const doc=await readSheet(zip,path);if(doc.getElementsByTagName('parsererror').length)throw new Error('Excel-Blatt konnte nicht gelesen werden: '+path);fn(doc);writeSheet(zip,path,doc)}
