@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const VERSION='20260818-0805';
+const VERSION='20260818-1619';
 const SHEET_INDEX={wagenliste:0,bremszettel:2,wu:3,meldezettel:4};
 const LABELS={wagenliste:'Wagenliste',bremszettel:'Bremszettel',wu:'WU / ZP',meldezettel:'Meldezettel'};
 const RAW_TEMPLATE='https://raw.githubusercontent.com/nerminuka-ux/wagenmeister-v3/main/wagenmeister-original.xlsx';
