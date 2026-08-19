@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Wagenmeister Reparatur</title>
+<style>
+body{margin:0;background:#f5f0e6;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial;color:#123f3e;display:grid;min-height:100vh;place-items:center;padding:20px}.card{max-width:560px;background:#fff;border:1px solid #ddd5c7;border-radius:18px;padding:24px;box-shadow:0 5px 24px rgba(0,0,0,.08);text-align:center}h1{font-size:22px;margin:0 0 12px}.status{font-size:16px;line-height:1.5}.ok{font-weight:800;color:#217a4b}.bad{color:#9b3434}button{margin-top:18px;border:0;border-radius:12px;padding:14px 18px;background:#123f3e;color:#fff;font-weight:800;font-size:16px;width:100%}</style>
+</head>
+<body><div class="card"><h1>Wagenmeister V3 – Reparatur</h1><div id="status" class="status">Alten App-Cache wird entfernt …</div><button id="go" style="display:none">Aktuelle App öffnen</button></div>
+<script>
+(async()=>{
+ const s=document.getElementById('status'),b=document.getElementById('go');
+ try{
+  if('serviceWorker' in navigator){
+   const regs=await navigator.serviceWorker.getRegistrations();
+   for(const r of regs){try{await r.unregister()}catch{}}
+  }
+  if('caches' in window){
+   const keys=await caches.keys();
+   for(const k of keys){try{await caches.delete(k)}catch{}}
+  }
+  try{localStorage.removeItem('wm_recovery_done')}catch{}
+  s.innerHTML='<span class="ok">✓ Alter Wagenmeister-Cache wurde gelöscht.</span><br>Die aktuelle App wird jetzt neu geladen.';
+  b.style.display='block';
+  b.onclick=()=>location.replace('./index.html?fresh=20260819-1421');
+  setTimeout(()=>location.replace('./index.html?fresh=20260819-1421'),1400);
+ }catch(e){
+  s.innerHTML='<span class="bad">Cache konnte nicht vollständig automatisch gelöscht werden.</span><br>Bitte unten auf „Aktuelle App öffnen“ tippen.';
+  b.style.display='block';b.onclick=()=>location.replace('./index.html?fresh=20260819-1421');
+ }
+})();
+</script></body></html>
