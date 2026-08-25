@@ -1,16 +1,29 @@
 (()=>{
 'use strict';
-const parse=v=>{const x=Number(String(v??'').trim().replace(/\./g,'').replace(',','.'));return Number.isFinite(x)?x:0};
-const tonnes=v=>{let x=parse(v);if(Math.abs(x)>=1000)x=x/1000;return x};
+const parse=v=>{const s=String(v??'').trim().replace(',','.');const x=Number(s);return Number.isFinite(x)?x:0};
+const loadTonnes=v=>{let x=parse(v);if(Math.abs(x)>=1000)x=x/1000;return x};
+const norm=v=>String(v||'').replace(/\D/g,'');
+function masterTare(number){
+ try{
+  const list=(typeof db!=='undefined'&&Array.isArray(db))?db:JSON.parse(localStorage.getItem('wm4s_db')||'[]');
+  const m=list.find(x=>norm(x.number)===norm(number));
+  const t=parse(m?.tare);return t>5?t:null;
+ }catch{return null}
+}
 const fixTrain=()=>{
  try{
   if(typeof train==='undefined'||!Array.isArray(train))return;
   let changed=false;
   train.forEach(w=>{
-   const load=tonnes(w.load),tare=tonnes(w.tare),tot=+(tare+load).toFixed(2);
-   if(Number(w.load)!==load){w.load=load;changed=true}
-   if(Number(w.tare)!==tare){w.tare=tare;changed=true}
-   if(Number(w.total)!==tot){w.total=tot;changed=true}
+   const load=loadTonnes(w.load);
+   let tare=parse(w.tare); // Tara is always already stored in tonnes. NEVER divide it by 1000.
+   const mt=masterTare(w.number);
+   // Repair values damaged by the previous kg-normalizer, e.g. 22.35 t -> 2.23 t.
+   if(tare>0&&tare<5&&mt){tare=mt}
+   const tot=+(tare+load).toFixed(2);
+   if(Math.abs(parse(w.load)-load)>0.0001){w.load=load;changed=true}
+   if(Math.abs(parse(w.tare)-tare)>0.0001){w.tare=tare;changed=true}
+   if(Math.abs(parse(w.total)-tot)>0.0001){w.total=tot;changed=true}
   });
   if(changed){localStorage.setItem('wm4s_train',JSON.stringify(train));try{render?.()}catch{}}
  }catch{}
@@ -18,23 +31,22 @@ const fixTrain=()=>{
 const fixEdit=()=>{
  const load=document.getElementById('eLoad'),tare=document.getElementById('eTare'),total=document.getElementById('eTotal');
  if(!load||!tare||!total)return;
- const l=tonnes(load.value),t=tonnes(tare.value);load.value=l.toFixed(2);tare.value=t.toFixed(2);total.value=(t+l).toFixed(2);
+ const l=loadTonnes(load.value),t=parse(tare.value);load.value=l.toFixed(2);tare.value=t.toFixed(2);total.value=(t+l).toFixed(2);
 };
-// Before the normal wagon save handler runs, normalize kg-style entries (e.g. 56500 -> 56.50 t).
 document.addEventListener('click',e=>{
  if(e.target?.id==='saveEdit')fixEdit();
- if(e.target?.id==='wmxSave'){
-  document.querySelectorAll('#wmxHost .wmxCell[data-k="load"]').forEach(el=>{el.value=tonnes(el.value).toFixed(2)});
- }
+ if(e.target?.id==='wmxSave')document.querySelectorAll('#wmxHost .wmxCell[data-k="load"]').forEach(el=>{el.value=loadTonnes(el.value).toFixed(2)});
 },true);
-// Keep the total field live while editing in the wagon modal.
 document.addEventListener('input',e=>{
  if(e.target?.id==='eLoad'||e.target?.id==='eTare'){
   const l=parse(document.getElementById('eLoad')?.value),t=parse(document.getElementById('eTare')?.value),o=document.getElementById('eTotal');if(o)o.value=(t+l).toFixed(2);
  }
+ if(e.target?.classList?.contains('wmxCell')&&e.target.dataset.k==='load'){
+  const tr=e.target.closest('tr'),cells=tr?.children;if(cells?.[6]){const i=Number(e.target.dataset.i),a=(typeof train!=='undefined'&&Array.isArray(train))?train:[];cells[6].textContent=(parse(a[i]?.tare)+loadTonnes(e.target.value)).toFixed(2)}
+ }
 });
-document.addEventListener('focusout',e=>{if(e.target?.id==='eLoad'||e.target?.id==='eTare')fixEdit()});
+document.addEventListener('focusout',e=>{if(e.target?.id==='eLoad')e.target.value=loadTonnes(e.target.value).toFixed(2);if(e.target?.id==='eTare')e.target.value=parse(e.target.value).toFixed(2);if(e.target?.id==='eLoad'||e.target?.id==='eTare')fixEdit()});
 fixTrain();
 window.addEventListener('pageshow',fixTrain);
-window.WMWeightV4={tonnes,fixTrain};
+window.WMWeightV4={loadTonnes,fixTrain};
 })();
