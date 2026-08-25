@@ -1,0 +1,31 @@
+(()=>{
+'use strict';
+const $=id=>document.getElementById(id);
+const TEMPLATE='wagenmeister-original.xlsx';
+const XLSX_TYPE='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const val=id=>$(id)?.value||'';
+const norm=v=>String(v??'').replace(/\D/g,'');
+const num=v=>{const x=Number(String(v??'').replace(',','.'));return Number.isFinite(x)?x:''};
+const rows=()=>{try{return (typeof train!=='undefined'&&Array.isArray(train))?train:JSON.parse(localStorage.getItem('wm4s_train')||'[]')}catch{return[]}};
+function ensureJSZip(){if(window.JSZip)return Promise.resolve();return new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';s.onload=ok;s.onerror=()=>no(new Error('JSZip konnte nicht geladen werden'));document.head.appendChild(s)})}
+function parts(ref){const m=/^([A-Z]+)(\d+)$/.exec(ref);return m?{col:m[1],row:+m[2]}:null}
+function colNo(c){let n=0;for(const x of c)n=n*26+x.charCodeAt(0)-64;return n}
+function row(doc,n){const sd=doc.getElementsByTagNameNS('*','sheetData')[0];let r=[...sd.getElementsByTagNameNS('*','row')].find(x=>+x.getAttribute('r')===n);if(r)return r;r=doc.createElementNS(sd.namespaceURI,'row');r.setAttribute('r',n);const before=[...sd.children].find(x=>+x.getAttribute('r')>n);before?sd.insertBefore(r,before):sd.appendChild(r);return r}
+function cell(doc,ref){const p=parts(ref),r=row(doc,p.row);let c=[...r.getElementsByTagNameNS('*','c')].find(x=>x.getAttribute('r')===ref);if(c)return c;c=doc.createElementNS(r.namespaceURI,'c');c.setAttribute('r',ref);const t=colNo(p.col),before=[...r.children].find(x=>{const q=parts(x.getAttribute('r')||'');return q&&colNo(q.col)>t});before?r.insertBefore(c,before):r.appendChild(c);return c}
+function clear(c,keepFormula=false){[...c.children].forEach(x=>{if(x.localName==='v'||x.localName==='is'||(!keepFormula&&x.localName==='f'))c.removeChild(x)});c.removeAttribute('t')}
+function set(doc,ref,value,type='string'){const c=cell(doc,ref);clear(c);if(value===null||value===undefined||value==='')return;if(type==='number'&&Number.isFinite(Number(value))){const v=doc.createElementNS(c.namespaceURI,'v');v.textContent=String(Number(value));c.appendChild(v);return}c.setAttribute('t','inlineStr');const is=doc.createElementNS(c.namespaceURI,'is'),t=doc.createElementNS(c.namespaceURI,'t');t.setAttribute('xml:space','preserve');t.textContent=String(value);is.appendChild(t);c.appendChild(is)}
+function dateDE(){const x=val('date');if(!x)return'';const [y,m,d]=x.split('-');return `${d}. ${m} ${y}`}
+function setCalc(zip,text){try{const doc=new DOMParser().parseFromString(text,'application/xml');let c=[...doc.getElementsByTagNameNS('*','calcPr')][0];if(!c){c=doc.createElementNS(doc.documentElement.namespaceURI,'calcPr');doc.documentElement.appendChild(c)}c.setAttribute('calcMode','auto');c.setAttribute('fullCalcOnLoad','1');c.setAttribute('forceFullCalc','1');zip.file('xl/workbook.xml',new XMLSerializer().serializeToString(doc))}catch{}}
+function fillWagenliste(doc){
+  set(doc,'M2',val('trainNo'));set(doc,'P2',val('from'));set(doc,'U2',val('to'));
+  const cols=['B','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W'];
+  for(let r=7;r<=36;r++)for(const c of cols)set(doc,c+r,'');
+  rows().slice(0,30).forEach((w,i)=>{const r=7+i;set(doc,'B'+r,norm(w.number));set(doc,'G'+r,num(w.axles),'number');set(doc,'H'+r,num(w.length),'number');set(doc,'I'+r,num(w.load),'number');set(doc,'J'+r,num(w.tare)+num(w.load),'number');set(doc,'K'+r,w.brakeShoe||'');set(doc,'L'+r,num(w.brakeP),'number');set(doc,'M'+r,num(w.brakeG),'number');set(doc,'N'+r,num(w.effectiveBrakes),'number');set(doc,'O'+r,num(w.handBrake),'number');set(doc,'P'+r,w.ridGef||'');set(doc,'Q'+r,w.unNr||'');set(doc,'R'+r,'');set(doc,'S'+r,0,'number');set(doc,'T'+r,w.destination||val('to'));set(doc,'U'+r,num(w.vmax)||100,'number');set(doc,'V'+r,w.routeClass||'D');set(doc,'W'+r,w.remarks||'')});
+  set(doc,'A42',dateDE());set(doc,'G42',val('time'));set(doc,'J42',val('createdBy'));
+}
+async function build(){await ensureJSZip();const r=await fetch('./'+TEMPLATE+'?v='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('Original-Excel-Vorlage fehlt ('+r.status+')');const buf=await r.arrayBuffer();if(buf.byteLength<50000)throw new Error('Original-Excel-Vorlage ist unvollständig');const zip=await JSZip.loadAsync(buf);const path='xl/worksheets/sheet1.xml',txt=await zip.file(path).async('text'),doc=new DOMParser().parseFromString(txt,'application/xml');if(doc.getElementsByTagName('parsererror').length)throw new Error('Wagenliste konnte nicht gelesen werden');fillWagenliste(doc);zip.file(path,new XMLSerializer().serializeToString(doc));const wb=zip.file('xl/workbook.xml');if(wb)setCalc(zip,await wb.async('text'));return zip.generateAsync({type:'blob',mimeType:XLSX_TYPE,compression:'DEFLATE'})}
+async function deliver(blob){const name=`GELSEN-LOG_${val('trainNo')||'Wagenliste'}.xlsx`,file=new File([blob],name,{type:XLSX_TYPE});try{if(navigator.canShare?.({files:[file]})){await navigator.share({files:[file],title:name});return}}catch(e){if(e?.name==='AbortError')return}const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000)}
+async function run(btn){const old=btn.textContent;btn.disabled=true;btn.textContent='Original-Excel wird erstellt …';try{await deliver(await build())}catch(e){alert('Original-Wagenliste konnte nicht erstellt werden: '+(e?.message||e))}finally{btn.disabled=false;btn.textContent=old}}
+function install(){const card=document.querySelector('#wagenliste .card');if(!card||document.getElementById('originalExcelV4'))return;const bar=document.createElement('div');bar.className='actions';bar.style.marginBottom='10px';const b=document.createElement('button');b.id='originalExcelV4';b.type='button';b.className='btn pri';b.textContent='📊 GELSEN-LOG Original-Excel erstellen';b.addEventListener('click',()=>run(b));bar.appendChild(b);const note=document.createElement('div');note.className='note';note.textContent='Verwendet die originale GELSEN-LOG Excel-Vorlage mit den aktuellen Zugdaten.';bar.appendChild(note);card.insertBefore(bar,card.querySelector('.tablewrap'))}
+install();window.WMExcelV4={build,run};
+})();
