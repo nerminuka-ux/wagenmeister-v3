@@ -8,6 +8,6 @@
       const wrap=document.createElement('div');wrap.className='actions';
       const b=document.createElement('button');b.type='button';b.className='btn pri';b.textContent='Öffnen';wrap.appendChild(b);card.appendChild(wrap);
     }
-    card.addEventListener('click',e=>{if(e.target.closest('button')||e.target===card||e.target.closest('.doc'))location.href='./documents-v4.html?id='+ids[i]+'&v=20260825-1445';});
+    card.addEventListener('click',e=>{e.preventDefault();location.href='./documents-v4.html?id='+ids[i]+'&v=20260825-1540';});
   });
 })();
