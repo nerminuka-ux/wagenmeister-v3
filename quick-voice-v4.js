@@ -7,6 +7,11 @@ const getTrain=()=>{try{return (typeof train!=='undefined'&&Array.isArray(train)
 const saveTrain=a=>{try{localStorage.setItem('wm4s_train',JSON.stringify(a));if(typeof persist==='function')persist();if(typeof render==='function')render()}catch{}};
 const fmtNo=v=>{const d=String(v||'').replace(/\D/g,'').slice(0,12);if(d.length<=2)return d;if(d.length<=4)return d.slice(0,2)+' '+d.slice(2);if(d.length<=8)return d.slice(0,2)+' '+d.slice(2,4)+' '+d.slice(4);if(d.length<=11)return d.slice(0,2)+' '+d.slice(2,4)+' '+d.slice(4,8)+' '+d.slice(8);return d.slice(0,2)+' '+d.slice(2,4)+' '+d.slice(4,8)+' '+d.slice(8,11)+'-'+d.slice(11)};
 const normalizeLoad=v=>{let x=num(v);if(Math.abs(x)>=1000)x=x/1000;return +x.toFixed(2)};
+function syncBulkFields(a){
+  const allSame=k=>a.length&&a.every(w=>String(w?.[k]??'').trim()===String(a[0]?.[k]??'').trim());
+  const pairs=[['wmqAllUn','unNr'],['wmqAllRid','ridGef'],['wmqAllLabel','gefZettel']];
+  pairs.forEach(([id,k])=>{const el=$(id);if(!el)return;el.value=allSame(k)?String(a[0]?.[k]??''):''});
+}
 function renderQuick(){
   const host=$('wmQuickRows'); if(!host)return;
   const a=getTrain();
@@ -17,6 +22,7 @@ function renderQuick(){
     <label>Gefahr-Nr.<input data-qkey="ridGef" data-qi="${i}" inputmode="numeric" value="${esc(w.ridGef||'')}"></label>
     <label>Gefahrzettel<input data-qkey="gefZettel" data-qi="${i}" value="${esc(w.gefZettel||'')}"></label>
   </div>`).join(''):'<div class="empty">Noch keine Wagen im Zug.</div>';
+  syncBulkFields(a);
 }
 function applyAll(){
   const a=getTrain(),un=$('wmqAllUn')?.value.trim()||'',rid=$('wmqAllRid')?.value.trim()||'',lab=$('wmqAllLabel')?.value.trim()||'';
@@ -48,6 +54,7 @@ function onQuickChange(e){
   else a[i][k]=el.value.trim();
   saveTrain(a);
   refreshLiveTotals(a,i);
+  if(k!=='load')syncBulkFields(a);
 }
 function speechCtor(){return window.SpeechRecognition||window.webkitSpeechRecognition||null}
 function speak(text){return new Promise(resolve=>{try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='de-DE';u.rate=1;u.onend=resolve;u.onerror=resolve;speechSynthesis.speak(u)}catch{resolve()}})}
