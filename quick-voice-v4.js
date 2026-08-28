@@ -24,13 +24,30 @@ function applyAll(){
   a.forEach(w=>{w.unNr=un;w.ridGef=rid;w.gefZettel=lab});
   saveTrain(a);renderQuick();
 }
+function refreshLiveTotals(a,i){
+  const t=document.querySelector('[data-qtotal="'+i+'"]');
+  if(t&&a[i])t.textContent=(num(a[i].tare)+num(a[i].load)).toFixed(2)+' t';
+  const load=a.reduce((s,w)=>s+num(w.load),0);
+  const total=a.reduce((s,w)=>s+num(w.tare)+num(w.load),0);
+  const sLoad=$('sLoad'),sTotal=$('sTotal');
+  if(sLoad)sLoad.textContent=load.toFixed(2)+' t';
+  if(sTotal)sTotal.textContent=total.toFixed(2)+' t';
+}
+function onQuickInput(e){
+  const el=e.target.closest('[data-qkey="load"]');if(!el)return;
+  const a=getTrain(),i=+el.dataset.qi;if(!a[i])return;
+  a[i].load=num(el.value);
+  a[i].total=+(num(a[i].tare)+a[i].load).toFixed(2);
+  try{localStorage.setItem('wm4s_train',JSON.stringify(a))}catch{}
+  refreshLiveTotals(a,i);
+}
 function onQuickChange(e){
   const el=e.target.closest('[data-qkey]');if(!el)return;
   const a=getTrain(),i=+el.dataset.qi,k=el.dataset.qkey;if(!a[i])return;
   if(k==='load'){a[i].load=normalizeLoad(el.value);a[i].total=+(num(a[i].tare)+a[i].load).toFixed(2);el.value=a[i].load.toFixed(2)}
   else a[i][k]=el.value.trim();
   saveTrain(a);
-  const t=document.querySelector('[data-qtotal="'+i+'"]');if(t)t.textContent=(num(a[i].tare)+num(a[i].load)).toFixed(2)+' t';
+  refreshLiveTotals(a,i);
 }
 function speechCtor(){return window.SpeechRecognition||window.webkitSpeechRecognition||null}
 function speak(text){return new Promise(resolve=>{try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='de-DE';u.rate=1;u.onend=resolve;u.onerror=resolve;speechSynthesis.speak(u)}catch{resolve()}})}
@@ -119,6 +136,7 @@ function install(){
     <div id="wmQuickRows"></div>`;
   current.parentNode.insertBefore(box,current);
   $('wmqApplyAll').onclick=applyAll;
+  box.addEventListener('input',onQuickInput);
   box.addEventListener('change',onQuickChange);
   const addCard=$('wagonSearch')?.closest('.card');
   const actions=addCard?.querySelector('.actions');
