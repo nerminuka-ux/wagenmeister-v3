@@ -8,9 +8,18 @@ const saveTrain=a=>{try{localStorage.setItem('wm4s_train',JSON.stringify(a));if(
 const fmtNo=v=>{const d=String(v||'').replace(/\D/g,'').slice(0,12);if(d.length<=2)return d;if(d.length<=4)return d.slice(0,2)+' '+d.slice(2);if(d.length<=8)return d.slice(0,2)+' '+d.slice(2,4)+' '+d.slice(4);if(d.length<=11)return d.slice(0,2)+' '+d.slice(2,4)+' '+d.slice(4,8)+' '+d.slice(8);return d.slice(0,2)+' '+d.slice(2,4)+' '+d.slice(4,8)+' '+d.slice(8,11)+'-'+d.slice(11)};
 const normalizeLoad=v=>{let x=num(v);if(Math.abs(x)>=1000)x=x/1000;return +x.toFixed(2)};
 function syncBulkFields(a){
-  const allSame=k=>a.length&&a.every(w=>String(w?.[k]??'').trim()===String(a[0]?.[k]??'').trim());
+  const clean=v=>String(v??'').trim();
   const pairs=[['wmqAllUn','unNr'],['wmqAllRid','ridGef'],['wmqAllLabel','gefZettel']];
-  pairs.forEach(([id,k])=>{const el=$(id);if(!el)return;el.value=allSame(k)?String(a[0]?.[k]??''):''});
+  pairs.forEach(([id,k])=>{
+    const el=$(id);if(!el)return;
+    let vals=(a||[]).map(w=>clean(w?.[k]));
+    if(!vals.length){
+      const key=k==='unNr'?'unNr':k==='ridGef'?'ridGef':'gefZettel';
+      vals=[...document.querySelectorAll('#wmQuickRows [data-qkey="'+key+'"]')].map(x=>clean(x.value));
+    }
+    const same=vals.length>0&&vals.every(v=>v===vals[0]);
+    el.value=same?vals[0]:'';
+  });
 }
 function renderQuick(){
   const host=$('wmQuickRows'); if(!host)return;
@@ -23,6 +32,8 @@ function renderQuick(){
     <label>Gefahrzettel<input data-qkey="gefZettel" data-qi="${i}" value="${esc(w.gefZettel||'')}"></label>
   </div>`).join(''):'<div class="empty">Noch keine Wagen im Zug.</div>';
   syncBulkFields(a);
+  setTimeout(()=>syncBulkFields(getTrain()),80);
+  setTimeout(()=>syncBulkFields(getTrain()),350);
 }
 function applyAll(){
   const a=getTrain(),un=$('wmqAllUn')?.value.trim()||'',rid=$('wmqAllRid')?.value.trim()||'',lab=$('wmqAllLabel')?.value.trim()||'';
@@ -164,6 +175,7 @@ function install(){
   renderQuick();
 }
 setTimeout(install,0);setTimeout(install,600);
-window.addEventListener('pageshow',renderQuick);
+window.addEventListener('pageshow',()=>{renderQuick();setTimeout(()=>syncBulkFields(getTrain()),200)});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(()=>syncBulkFields(getTrain()),150)});
 window.WMQuickVoiceV4={renderQuick,assistant,speakWagonNumber};
 })();
