@@ -7,6 +7,25 @@ const getTrain=()=>{try{return (typeof train!=='undefined'&&Array.isArray(train)
 const saveTrain=a=>{try{localStorage.setItem('wm4s_train',JSON.stringify(a));if(typeof persist==='function')persist();if(typeof render==='function')render()}catch{}};
 const fmtNo=v=>{const d=String(v||'').replace(/\D/g,'').slice(0,12);if(d.length<=2)return d;if(d.length<=4)return d.slice(0,2)+' '+d.slice(2);if(d.length<=8)return d.slice(0,2)+' '+d.slice(2,4)+' '+d.slice(4);if(d.length<=11)return d.slice(0,2)+' '+d.slice(2,4)+' '+d.slice(4,8)+' '+d.slice(8);return d.slice(0,2)+' '+d.slice(2,4)+' '+d.slice(4,8)+' '+d.slice(8,11)+'-'+d.slice(11)};
 const normalizeLoad=v=>{let x=num(v);if(Math.abs(x)>=1000)x=x/1000;return +x.toFixed(2)};
+function inheritCommonDanger(a){
+  if(!Array.isArray(a)||a.length<2)return false;
+  const keys=['unNr','ridGef','gefZettel'];
+  let changed=false;
+  const sources=a.filter(w=>keys.some(k=>String(w?.[k]??'').trim()!==''));
+  if(!sources.length)return false;
+  const common={};
+  for(const k of keys){
+    const vals=[...new Set(sources.map(w=>String(w?.[k]??'').trim()))];
+    if(vals.length!==1)return false;
+    common[k]=vals[0];
+  }
+  a.forEach(w=>{
+    const empty=keys.every(k=>String(w?.[k]??'').trim()==='');
+    if(empty){keys.forEach(k=>w[k]=common[k]);changed=true}
+  });
+  if(changed){try{localStorage.setItem('wm4s_train',JSON.stringify(a))}catch{}}
+  return changed;
+}
 function syncBulkFields(a){
   const clean=v=>String(v??'').trim();
   const pairs=[['wmqAllUn','unNr'],['wmqAllRid','ridGef'],['wmqAllLabel','gefZettel']];
@@ -24,6 +43,7 @@ function syncBulkFields(a){
 function renderQuick(){
   const host=$('wmQuickRows'); if(!host)return;
   const a=getTrain();
+  inheritCommonDanger(a);
   host.innerHTML=a.length?a.map((w,i)=>`<div class="wmqRow" data-i="${i}">
     <div class="wmqNo"><b>${i+1}. ${esc(w.number||'')}</b><span>Tara ${num(w.tare).toFixed(2)} t · Gesamt <strong data-qtotal="${i}">${(num(w.tare)+num(w.load)).toFixed(2)} t</strong></span></div>
     <label>Ladung t<input data-qkey="load" data-qi="${i}" inputmode="decimal" value="${num(w.load).toFixed(2)}"></label>
@@ -101,7 +121,7 @@ async function speakWagonNumber(){
     await speak('Wagennummer '+fmtNo(d)+' wurde eingetragen.');
   }catch(e){alert(e.message||e)}
 }
-let voiceRunning=false;
+let voiceRunning=false,voiceCommonDanger=null;
 async function assistant(){
   if(voiceRunning)return;voiceRunning=true;
   const b=$('wmVoiceAssistant');if(b){b.disabled=true;b.textContent='🎙️ Assistent läuft …'}
@@ -120,14 +140,24 @@ async function assistant(){
       if(idx<0){await speak('Der Wagen konnte nicht übernommen werden.');break}
       const loadText=await listen('Wie hoch ist die Ladung in Tonnen?');
       a[idx].load=decimalFromSpeech(loadText);a[idx].total=+(num(a[idx].tare)+num(a[idx].load)).toFixed(2);
-      let unText=await listen('Welche UN Nummer? Sage keine, wenn keine vorhanden ist.');
-      a[idx].unNr=none(unText)?'':transcriptDigits(unText);
-      let ridText=await listen('Welche Gefahrnummer? Sage keine, wenn keine vorhanden ist.');
-      a[idx].ridGef=none(ridText)?'':transcriptDigits(ridText);
-      let labelText=await listen('Welcher Gefahrzettel? Sage keine, wenn keiner vorhanden ist.');
-      a[idx].gefZettel=none(labelText)?'':String(labelText).replace(/[^0-9A-Za-z.+/-]/g,' ').trim();
-      let allText=await listen('Gelten diese Gefahrdaten für alle Wagen im Zug?');
-      if(yes(allText))a.forEach(w=>{w.unNr=a[idx].unNr;w.ridGef=a[idx].ridGef;w.gefZettel=a[idx].gefZettel});
+      if(voiceCommonDanger){
+        a[idx].unNr=voiceCommonDanger.unNr;
+        a[idx].ridGef=voiceCommonDanger.ridGef;
+        a[idx].gefZettel=voiceCommonDanger.gefZettel;
+        await speak('Die gemeinsamen Gefahrdaten werden übernommen.');
+      }else{
+        let unText=await listen('Welche UN Nummer? Sage keine, wenn keine vorhanden ist.');
+        a[idx].unNr=none(unText)?'':transcriptDigits(unText);
+        let ridText=await listen('Welche Gefahrnummer? Sage keine, wenn keine vorhanden ist.');
+        a[idx].ridGef=none(ridText)?'':transcriptDigits(ridText);
+        let labelText=await listen('Welcher Gefahrzettel? Sage keine, wenn keiner vorhanden ist.');
+        a[idx].gefZettel=none(labelText)?'':String(labelText).replace(/[^0-9A-Za-z.+/-]/g,' ').trim();
+        let allText=await listen('Gelten diese Gefahrdaten für alle Wagen im Zug?');
+        if(yes(allText)){
+          voiceCommonDanger={unNr:a[idx].unNr,ridGef:a[idx].ridGef,gefZettel:a[idx].gefZettel};
+          a.forEach(w=>{w.unNr=voiceCommonDanger.unNr;w.ridGef=voiceCommonDanger.ridGef;w.gefZettel=voiceCommonDanger.gefZettel});
+        }
+      }
       saveTrain(a);renderQuick();
       await speak('Wagen gespeichert. Gesamtgewicht '+a[idx].total.toFixed(2)+' Tonnen.');
       const more=await listen('Möchtest du einen weiteren Wagen aufnehmen?');
@@ -135,7 +165,7 @@ async function assistant(){
     }while(true);
     await speak('Sprachaufnahme beendet.');
   }catch(e){alert(e.message||e)}
-  finally{voiceRunning=false;if(b){b.disabled=false;b.textContent='🗣️ Sprach-Assistent'}}
+  finally{voiceRunning=false;voiceCommonDanger=null;if(b){b.disabled=false;b.textContent='🗣️ Sprach-Assistent'}}
 }
 function install(){
   if($('wmQuickEntry')){renderQuick();return}
