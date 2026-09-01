@@ -6,7 +6,8 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&
 const getTrain=()=>{try{return (typeof train!=='undefined'&&Array.isArray(train))?train:JSON.parse(localStorage.getItem('wm4s_train')||'[]')}catch{return[]}};
 const saveTrain=a=>{try{localStorage.setItem('wm4s_train',JSON.stringify(a));if(typeof persist==='function')persist();if(typeof render==='function')render()}catch{}};
 const fmtNo=v=>{const d=String(v||'').replace(/\D/g,'').slice(0,12);if(d.length<=2)return d;if(d.length<=4)return d.slice(0,2)+' '+d.slice(2);if(d.length<=8)return d.slice(0,2)+' '+d.slice(2,4)+' '+d.slice(4);if(d.length<=11)return d.slice(0,2)+' '+d.slice(2,4)+' '+d.slice(4,8)+' '+d.slice(8);return d.slice(0,2)+' '+d.slice(2,4)+' '+d.slice(4,8)+' '+d.slice(8,11)+'-'+d.slice(11)};
-const normalizeLoad=v=>{let x=num(v);if(Math.abs(x)>=1000)x=x/1000;return +x.toFixed(2)};
+const normalizeLoad=v=>{if(String(v??'').trim()==='')return'';let x=num(v);if(Math.abs(x)>=1000)x=x/1000;return +x.toFixed(2)};
+const shown=(v,d=2)=>{if(v===null||v===undefined||String(v).trim()==='')return'';const x=Number(String(v).replace(',','.'));return Number.isFinite(x)?x.toFixed(d):String(v)};
 function inheritCommonDanger(a){
   if(!Array.isArray(a)||a.length<2)return false;
   const keys=['unNr','ridGef','gefZettel'];
@@ -46,13 +47,13 @@ function renderQuick(){
   a.forEach(w=>{if(w.gefZettel===undefined||w.gefZettel===null||String(w.gefZettel).trim()==='')w.gefZettel='3'});
   inheritCommonDanger(a);
   host.innerHTML=a.length?a.map((w,i)=>`<div class="wmqRow" data-i="${i}">
-    <div class="wmqNo"><b>${i+1}. ${esc(w.number||'')}</b><span>Tara ${num(w.tare).toFixed(2)} t</span></div>
-    <label>Länge ü. Puffer m<input data-qkey="length" data-qi="${i}" inputmode="decimal" value="${num(w.length).toFixed(2)}"></label>
-    <label>Ladung t<input data-qkey="load" data-qi="${i}" inputmode="decimal" value="${num(w.load).toFixed(2)}"></label>
-    <label>Gesamt t<input data-qkey="total" data-qi="${i}" value="${(num(w.tare)+num(w.load)).toFixed(2)}" readonly></label>
+    <div class="wmqNo"><b>${i+1}. ${esc(w.number||'')}</b><span>${shown(w.tare)!==''?'Tara '+shown(w.tare)+' t':''}</span></div>
+    <label>Länge ü. Puffer m<input data-qkey="length" data-qi="${i}" inputmode="decimal" value="${shown(w.length)}"></label>
+    <label>Ladung t<input data-qkey="load" data-qi="${i}" inputmode="decimal" value="${shown(w.load)}"></label>
+    <label>Gesamt t<input data-qkey="total" data-qi="${i}" value="${(shown(w.tare)!==''&&shown(w.load)!=='')?(num(w.tare)+num(w.load)).toFixed(2):''}" readonly></label>
     <label>Bremssohle<input data-qkey="brakeShoe" data-qi="${i}" value="${esc(w.brakeShoe||'')}"></label>
-    <label>Bremsgewicht<input data-qkey="brakeP" data-qi="${i}" inputmode="decimal" value="${num(w.brakeP)||''}"></label>
-    <label>Festhaltekraft kN<input data-qkey="handBrake" data-qi="${i}" inputmode="decimal" value="${num(w.handBrake)||''}"></label>
+    <label>Bremsgewicht<input data-qkey="brakeP" data-qi="${i}" inputmode="decimal" value="${shown(w.brakeP,0)}"></label>
+    <label>Festhaltekraft kN<input data-qkey="handBrake" data-qi="${i}" inputmode="decimal" value="${shown(w.handBrake,1)}"></label>
     <label>UN-Nr.<input data-qkey="unNr" data-qi="${i}" inputmode="numeric" value="${esc(w.unNr||'')}"></label>
     <label>Gefahr-Nr.<input data-qkey="ridGef" data-qi="${i}" inputmode="numeric" value="${esc(w.ridGef||'')}"></label>
     <label>Gefahrzettel<input data-qkey="gefZettel" data-qi="${i}" value="${esc(w.gefZettel||'')}"></label>
@@ -69,7 +70,7 @@ function applyAll(){
 }
 function refreshLiveTotals(a,i){
   const t=document.querySelector('[data-qkey="total"][data-qi="'+i+'"]');
-  if(t&&a[i])t.value=(num(a[i].tare)+num(a[i].load)).toFixed(2);
+  if(t&&a[i])t.value=(shown(a[i].tare)!==''&&shown(a[i].load)!=='')?(num(a[i].tare)+num(a[i].load)).toFixed(2):'';
   const load=a.reduce((s,w)=>s+num(w.load),0);
   const total=a.reduce((s,w)=>s+num(w.tare)+num(w.load),0);
   const sLoad=$('sLoad'),sTotal=$('sTotal');
@@ -79,15 +80,15 @@ function refreshLiveTotals(a,i){
 function onQuickInput(e){
   const el=e.target.closest('[data-qkey]');if(!el)return;
   const a=getTrain(),i=+el.dataset.qi,k=el.dataset.qkey;if(!a[i]||k==='total')return;
-  if(k==='load'){a[i].load=num(el.value);a[i].total=+(num(a[i].tare)+a[i].load).toFixed(2);refreshLiveTotals(a,i)}
+  if(k==='load'){a[i].load=String(el.value).trim()===''?'':num(el.value);a[i].total=(a[i].load===''||shown(a[i].tare)==='')?'':+(num(a[i].tare)+num(a[i].load)).toFixed(2);refreshLiveTotals(a,i)}
   try{localStorage.setItem('wm4s_train',JSON.stringify(a))}catch{}
 }
 function onQuickChange(e){
   const el=e.target.closest('[data-qkey]');if(!el)return;
   const a=getTrain(),i=+el.dataset.qi,k=el.dataset.qkey;if(!a[i])return;
   if(k==='total')return;
-  if(k==='load'){a[i].load=normalizeLoad(el.value);a[i].total=+(num(a[i].tare)+a[i].load).toFixed(2);el.value=a[i].load.toFixed(2)}
-  else if(['length','brakeP','handBrake'].includes(k))a[i][k]=num(el.value);
+  if(k==='load'){a[i].load=normalizeLoad(el.value);a[i].total=(a[i].load===''||shown(a[i].tare)==='')?'':+(num(a[i].tare)+num(a[i].load)).toFixed(2);el.value=a[i].load===''?'':Number(a[i].load).toFixed(2)}
+  else if(['length','brakeP','handBrake'].includes(k))a[i][k]=String(el.value).trim()===''?'':num(el.value);
   else a[i][k]=el.value.trim();
   if(['length','brakeShoe','brakeP','handBrake'].includes(k)&&typeof saveMasterToDB==='function')saveMasterToDB(a[i]);
   saveTrain(a);
