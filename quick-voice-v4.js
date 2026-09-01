@@ -30,7 +30,7 @@ function inheritCommonDanger(a){
 }
 function syncBulkFields(a){
   const clean=v=>String(v??'').trim();
-  const pairs=[['wmqAllUn','unNr'],['wmqAllRid','ridGef'],['wmqAllLabel','gefZettel']];
+  const pairs=[['wmqAllUn','unNr']];
   pairs.forEach(([id,k])=>{
     const el=$(id);if(!el)return;
     let vals=(a||[]).map(w=>clean(w?.[k]));
@@ -56,18 +56,16 @@ function renderQuick(){
     <label>Bremsgewicht<input data-qkey="brakeP" data-qi="${i}" inputmode="decimal" value="${shown(w.brakeP,0)}"></label>
     <label>Festhaltekraft kN<input data-qkey="handBrake" data-qi="${i}" inputmode="decimal" value="${shown(w.handBrake,1)}"></label>
     <label>UN-Nr.<input data-qkey="unNr" data-qi="${i}" inputmode="numeric" value="${esc(w.unNr||'')}"></label>
-    <label>Gefahr-Nr.<input data-qkey="ridGef" data-qi="${i}" inputmode="numeric" value="${esc(w.ridGef||'')}"></label>
-    <label>Gefahrzettel<input data-qkey="gefZettel" data-qi="${i}" value="${esc(w.gefZettel||'')}"></label>
   </div>`).join(''):'<div class="empty">Noch keine Wagen im Zug.</div>';
   syncBulkFields(a);
   setTimeout(()=>syncBulkFields(getTrain()),80);
   setTimeout(()=>syncBulkFields(getTrain()),350);
 }
 function applyAll(){
-  const a=getTrain(),un=$('wmqAllUn')?.value.trim()||'',rid=$('wmqAllRid')?.value.trim()||'',lab=$('wmqAllLabel')?.value.trim()||'3';
+  const a=getTrain(),un=$('wmqAllUn')?.value.trim()||'';
   if(!a.length)return alert('Noch keine Wagen im Zug.');
   const d=dangerDefaults(un);
-  a.forEach(w=>{w.unNr=un;w.ridGef=rid||d?.ridGef||'';w.gefZettel=lab||d?.gefZettel||'3'});
+  a.forEach(w=>{w.unNr=un;w.ridGef=d?.ridGef||'';w.gefZettel=d?.gefZettel||'3'});
   saveTrain(a);renderQuick();
 }
 function refreshLiveTotals(a,i){
@@ -163,13 +161,9 @@ async function assistant(){
         let unText=await listen('Welche UN Nummer? Sage keine, wenn keine vorhanden ist.');
         a[idx].unNr=none(unText)?'':transcriptDigits(unText);
         const dd=dangerDefaults(a[idx].unNr);
-        if(dd){a[idx].ridGef=dd.ridGef;a[idx].gefZettel=dd.gefZettel;await speak('Gefahrnummer '+dd.ridGef+' und Gefahrzettel '+dd.gefZettel+' werden automatisch übernommen.');}
-        else{
-          let ridText=await listen('Welche Gefahrnummer? Sage keine, wenn keine vorhanden ist.');
-          a[idx].ridGef=none(ridText)?'':transcriptDigits(ridText);
-          let labelText=await listen('Welcher Gefahrzettel? Standard ist drei. Sage andere Zahl, wenn er abweicht.');
-          a[idx].gefZettel=none(labelText)?'3':(String(labelText).replace(/[^0-9A-Za-z.+/-]/g,' ').trim()||'3');
-        }
+        a[idx].ridGef=dd?.ridGef||'';
+        a[idx].gefZettel=dd?.gefZettel||'3';
+        if(dd)await speak('Gefahrdaten werden automatisch übernommen.');
         let allText=await listen('Gelten diese Gefahrdaten für alle Wagen im Zug?');
         if(yes(allText)){
           voiceCommonDanger={unNr:a[idx].unNr,ridGef:a[idx].ridGef,gefZettel:a[idx].gefZettel};
@@ -212,7 +206,7 @@ function install(){
     actions.appendChild(one);actions.appendChild(as);
   }
   const st=document.createElement('style');st.textContent=`
-    #wmQuickEntry{border:2px solid #d8e3df}.wmqBulk{display:grid;grid-template-columns:repeat(3,1fr) auto;gap:8px;align-items:end;margin-top:10px}
+    #wmQuickEntry{border:2px solid #d8e3df}.wmqBulk{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;margin-top:10px}
     .wmqBulk input,.wmqRow input{background:#fffdf3;border:1px solid #c9d0cc;border-radius:8px;padding:9px 8px;font-size:15px}
     .wmqHint{font-size:11px;color:#66736f;margin:10px 0 7px}
     .wmqRow{display:grid;grid-template-columns:1.25fr repeat(9,minmax(92px,1fr));gap:7px;align-items:end;border-top:1px solid #e3e0d8;padding:9px 0;overflow-x:auto}
