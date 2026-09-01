@@ -46,8 +46,13 @@ function renderQuick(){
   a.forEach(w=>{if(w.gefZettel===undefined||w.gefZettel===null||String(w.gefZettel).trim()==='')w.gefZettel='3'});
   inheritCommonDanger(a);
   host.innerHTML=a.length?a.map((w,i)=>`<div class="wmqRow" data-i="${i}">
-    <div class="wmqNo"><b>${i+1}. ${esc(w.number||'')}</b><span>Tara ${num(w.tare).toFixed(2)} t · Gesamt <strong data-qtotal="${i}">${(num(w.tare)+num(w.load)).toFixed(2)} t</strong></span></div>
+    <div class="wmqNo"><b>${i+1}. ${esc(w.number||'')}</b><span>Tara ${num(w.tare).toFixed(2)} t</span></div>
+    <label>Länge ü. Puffer m<input data-qkey="length" data-qi="${i}" inputmode="decimal" value="${num(w.length).toFixed(2)}"></label>
     <label>Ladung t<input data-qkey="load" data-qi="${i}" inputmode="decimal" value="${num(w.load).toFixed(2)}"></label>
+    <label>Gesamt t<input data-qkey="total" data-qi="${i}" value="${(num(w.tare)+num(w.load)).toFixed(2)}" readonly></label>
+    <label>Bremssohle<input data-qkey="brakeShoe" data-qi="${i}" value="${esc(w.brakeShoe||'')}"></label>
+    <label>Bremsgewicht<input data-qkey="brakeP" data-qi="${i}" inputmode="decimal" value="${num(w.brakeP)||''}"></label>
+    <label>Festhaltekraft kN<input data-qkey="handBrake" data-qi="${i}" inputmode="decimal" value="${num(w.handBrake)||''}"></label>
     <label>UN-Nr.<input data-qkey="unNr" data-qi="${i}" inputmode="numeric" value="${esc(w.unNr||'')}"></label>
     <label>Gefahr-Nr.<input data-qkey="ridGef" data-qi="${i}" inputmode="numeric" value="${esc(w.ridGef||'')}"></label>
     <label>Gefahrzettel<input data-qkey="gefZettel" data-qi="${i}" value="${esc(w.gefZettel||'')}"></label>
@@ -63,8 +68,8 @@ function applyAll(){
   saveTrain(a);renderQuick();
 }
 function refreshLiveTotals(a,i){
-  const t=document.querySelector('[data-qtotal="'+i+'"]');
-  if(t&&a[i])t.textContent=(num(a[i].tare)+num(a[i].load)).toFixed(2)+' t';
+  const t=document.querySelector('[data-qkey="total"][data-qi="'+i+'"]');
+  if(t&&a[i])t.value=(num(a[i].tare)+num(a[i].load)).toFixed(2);
   const load=a.reduce((s,w)=>s+num(w.load),0);
   const total=a.reduce((s,w)=>s+num(w.tare)+num(w.load),0);
   const sLoad=$('sLoad'),sTotal=$('sTotal');
@@ -72,21 +77,22 @@ function refreshLiveTotals(a,i){
   if(sTotal)sTotal.textContent=total.toFixed(2)+' t';
 }
 function onQuickInput(e){
-  const el=e.target.closest('[data-qkey="load"]');if(!el)return;
-  const a=getTrain(),i=+el.dataset.qi;if(!a[i])return;
-  a[i].load=num(el.value);
-  a[i].total=+(num(a[i].tare)+a[i].load).toFixed(2);
+  const el=e.target.closest('[data-qkey]');if(!el)return;
+  const a=getTrain(),i=+el.dataset.qi,k=el.dataset.qkey;if(!a[i]||k==='total')return;
+  if(k==='load'){a[i].load=num(el.value);a[i].total=+(num(a[i].tare)+a[i].load).toFixed(2);refreshLiveTotals(a,i)}
   try{localStorage.setItem('wm4s_train',JSON.stringify(a))}catch{}
-  refreshLiveTotals(a,i);
 }
 function onQuickChange(e){
   const el=e.target.closest('[data-qkey]');if(!el)return;
   const a=getTrain(),i=+el.dataset.qi,k=el.dataset.qkey;if(!a[i])return;
+  if(k==='total')return;
   if(k==='load'){a[i].load=normalizeLoad(el.value);a[i].total=+(num(a[i].tare)+a[i].load).toFixed(2);el.value=a[i].load.toFixed(2)}
+  else if(['length','brakeP','handBrake'].includes(k))a[i][k]=num(el.value);
   else a[i][k]=el.value.trim();
+  if(['length','brakeShoe','brakeP','handBrake'].includes(k)&&typeof saveMasterToDB==='function')saveMasterToDB(a[i]);
   saveTrain(a);
   refreshLiveTotals(a,i);
-  if(k!=='load')syncBulkFields(a);
+  if(['unNr','ridGef','gefZettel'].includes(k))syncBulkFields(a);
 }
 function speechCtor(){return window.SpeechRecognition||window.webkitSpeechRecognition||null}
 function speak(text){return new Promise(resolve=>{try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='de-DE';u.rate=1;u.onend=resolve;u.onerror=resolve;speechSynthesis.speak(u)}catch{resolve()}})}
@@ -198,7 +204,7 @@ function install(){
     #wmQuickEntry{border:2px solid #d8e3df}.wmqBulk{display:grid;grid-template-columns:repeat(3,1fr) auto;gap:8px;align-items:end;margin-top:10px}
     .wmqBulk input,.wmqRow input{background:#fffdf3;border:1px solid #c9d0cc;border-radius:8px;padding:9px 8px;font-size:15px}
     .wmqHint{font-size:11px;color:#66736f;margin:10px 0 7px}
-    .wmqRow{display:grid;grid-template-columns:1.35fr .65fr .7fr .7fr .7fr;gap:7px;align-items:end;border-top:1px solid #e3e0d8;padding:9px 0}
+    .wmqRow{display:grid;grid-template-columns:1.25fr repeat(9,minmax(92px,1fr));gap:7px;align-items:end;border-top:1px solid #e3e0d8;padding:9px 0;overflow-x:auto}
     .wmqNo span{display:block;font-size:11px;color:#66736f;margin-top:3px}
     .wmqRow label{font-size:10px;color:#66736f}
     @media(max-width:650px){.wmqBulk{grid-template-columns:1fr 1fr}.wmqBulk button{grid-column:1/-1}.wmqRow{grid-template-columns:1fr 1fr}.wmqNo{grid-column:1/-1}}
