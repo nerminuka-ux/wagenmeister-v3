@@ -76,7 +76,7 @@ function refreshLiveTotals(a,i){
   const total=a.reduce((s,w)=>s+num(w.tare)+num(w.load),0);
   const sLoad=$('sLoad'),sTotal=$('sTotal');
   if(sLoad)sLoad.textContent=load.toFixed(2)+' t';
-  if(sTotal)sTotal.textContent=total.toFixed(2)+' t';
+  if(sTotal)sTotal.textContent=Math.round(total)+' t';
 }
 function onQuickInput(e){
   const el=e.target.closest('[data-qkey]');if(!el)return;
