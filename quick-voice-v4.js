@@ -7,7 +7,7 @@ const getTrain=()=>{try{return (typeof train!=='undefined'&&Array.isArray(train)
 const saveTrain=a=>{try{localStorage.setItem('wm4s_train',JSON.stringify(a));if(typeof persist==='function')persist();if(typeof render==='function')render()}catch{}};
 const fmtNo=v=>{const d=String(v||'').replace(/\D/g,'').slice(0,12);if(d.length<=2)return d;if(d.length<=4)return d.slice(0,2)+' '+d.slice(2);if(d.length<=8)return d.slice(0,2)+' '+d.slice(2,4)+' '+d.slice(4);if(d.length<=11)return d.slice(0,2)+' '+d.slice(2,4)+' '+d.slice(4,8)+' '+d.slice(8);return d.slice(0,2)+' '+d.slice(2,4)+' '+d.slice(4,8)+' '+d.slice(8,11)+'-'+d.slice(11)};
 const normalizeLoad=v=>{if(String(v??'').trim()==='')return'';let x=num(v);if(Math.abs(x)>=1000)x=x/1000;return +x.toFixed(2)};
-const shown=(v,d=2)=>{if(v===null||v===undefined||String(v).trim()==='')return'';const x=Number(String(v).replace(',','.'));return Number.isFinite(x)?x.toFixed(d):String(v)};
+const shown=(v,d=2,zeroBlank=false)=>{if(v===null||v===undefined||String(v).trim()==='')return'';const x=Number(String(v).replace(',','.'));if(zeroBlank&&Number.isFinite(x)&&x===0)return'';return Number.isFinite(x)?x.toFixed(d):String(v)};
 function dangerDefaults(un){const u=String(un??'').replace(/\D/g,'');if(u==='1202'||u==='1863')return{ridGef:'30',gefZettel:'3'};if(u==='1203')return{ridGef:'33',gefZettel:'3'};return null;}
 function inheritCommonDanger(a){
   if(!Array.isArray(a)||a.length<2)return false;
@@ -48,13 +48,14 @@ function renderQuick(){
   a.forEach(w=>{if(w.gefZettel===undefined||w.gefZettel===null||String(w.gefZettel).trim()==='')w.gefZettel='3'});
   inheritCommonDanger(a);
   host.innerHTML=a.length?a.map((w,i)=>`<div class="wmqRow" data-i="${i}">
-    <div class="wmqNo"><b>${i+1}. ${esc(w.number||'')}</b><span>${shown(w.tare)!==''?'Tara '+shown(w.tare)+' t':''}</span></div>
-    <label>Länge ü. Puffer m<input data-qkey="length" data-qi="${i}" inputmode="decimal" value="${shown(w.length)}"></label>
-    <label>Ladung t<input data-qkey="load" data-qi="${i}" inputmode="decimal" value="${shown(w.load)}"></label>
-    <label>Gesamt t<input data-qkey="total" data-qi="${i}" value="${(shown(w.tare)!==''&&shown(w.load)!=='')?(num(w.tare)+num(w.load)).toFixed(2):''}" readonly></label>
+    <div class="wmqNo"><b>${i+1}. ${esc(w.number||'')}</b></div>
+    <label>Länge ü. Puffer m<input data-qkey="length" data-qi="${i}" inputmode="decimal" value="${shown(w.length,2,true)}"></label>
+    <label>Eigengewicht t<input data-qkey="tare" data-qi="${i}" inputmode="decimal" value="${shown(w.tare,2,true)}"></label>
+    <label>Ladungsgewicht t<input data-qkey="load" data-qi="${i}" inputmode="decimal" value="${shown(w.load)}"></label>
+    <label>Gesamtgewicht t<input data-qkey="total" data-qi="${i}" value="${(shown(w.tare,2,true)!==''&&shown(w.load)!=='')?(num(w.tare)+num(w.load)).toFixed(2):''}" readonly></label>
     <label>Bremssohle<input data-qkey="brakeShoe" data-qi="${i}" value="${esc(w.brakeShoe||'')}"></label>
-    <label>Bremsgewicht<input data-qkey="brakeP" data-qi="${i}" inputmode="decimal" value="${shown(w.brakeP,0)}"></label>
-    <label>Festhaltekraft kN<input data-qkey="handBrake" data-qi="${i}" inputmode="decimal" value="${shown(w.handBrake,1)}"></label>
+    <label>Bremsgewicht<input data-qkey="brakeP" data-qi="${i}" inputmode="decimal" value="${shown(w.brakeP,0,true)}"></label>
+    <label>Festhaltekraft kN<input data-qkey="handBrake" data-qi="${i}" inputmode="decimal" value="${shown(w.handBrake,1,true)}"></label>
     <label>UN-Nr.<input data-qkey="unNr" data-qi="${i}" inputmode="numeric" value="${esc(w.unNr||'')}"></label>
   </div>`).join(''):'<div class="empty">Noch keine Wagen im Zug.</div>';
   syncBulkFields(a);
@@ -70,7 +71,7 @@ function applyAll(){
 }
 function refreshLiveTotals(a,i){
   const t=document.querySelector('[data-qkey="total"][data-qi="'+i+'"]');
-  if(t&&a[i])t.value=(shown(a[i].tare)!==''&&shown(a[i].load)!=='')?(num(a[i].tare)+num(a[i].load)).toFixed(2):'';
+  if(t&&a[i])t.value=(shown(a[i].tare,2,true)!==''&&shown(a[i].load)!=='')?(num(a[i].tare)+num(a[i].load)).toFixed(2):'';
   const load=a.reduce((s,w)=>s+num(w.load),0);
   const total=a.reduce((s,w)=>s+num(w.tare)+num(w.load),0);
   const sLoad=$('sLoad'),sTotal=$('sTotal');
@@ -88,15 +89,16 @@ function onQuickChange(e){
   const a=getTrain(),i=+el.dataset.qi,k=el.dataset.qkey;if(!a[i])return;
   if(k==='total')return;
   if(k==='load'){a[i].load=normalizeLoad(el.value);a[i].total=(a[i].load===''||shown(a[i].tare)==='')?'':+(num(a[i].tare)+num(a[i].load)).toFixed(2);el.value=a[i].load===''?'':Number(a[i].load).toFixed(2)}
-  else if(['length','brakeP','handBrake'].includes(k))a[i][k]=String(el.value).trim()===''?'':num(el.value);
+  else if(['length','tare','brakeP','handBrake'].includes(k))a[i][k]=String(el.value).trim()===''?'':num(el.value);
   else a[i][k]=el.value.trim();
   if(k==='unNr'){
     const d=dangerDefaults(a[i].unNr);
     if(d){a[i].ridGef=d.ridGef;a[i].gefZettel=d.gefZettel;}
   }
-  if(['length','brakeShoe','brakeP','handBrake'].includes(k)&&typeof saveMasterToDB==='function')saveMasterToDB(a[i]);
+  if(['length','tare','brakeShoe','brakeP','handBrake'].includes(k)&&typeof saveMasterToDB==='function')saveMasterToDB(a[i]);
+  if(k==='tare')a[i].total=(shown(a[i].tare,2,true)!==''&&shown(a[i].load)!=='')?+(num(a[i].tare)+num(a[i].load)).toFixed(2):'';
   saveTrain(a);
-  if(k==='unNr')renderQuick(); else refreshLiveTotals(a,i);
+  if(k==='unNr'||k==='tare')renderQuick(); else refreshLiveTotals(a,i);
   if(['unNr','ridGef','gefZettel'].includes(k))syncBulkFields(a);
 }
 function speechCtor(){return window.SpeechRecognition||window.webkitSpeechRecognition||null}
@@ -184,12 +186,10 @@ function install(){
   const zug=$('zug'), trainList=$('trainList');if(!zug||!trainList)return;
   const current=trainList.closest('.card');
   const box=document.createElement('div');box.className='card';box.id='wmQuickEntry';
-  box.innerHTML=`<div class="title">Schnelleingabe Ladung & Gefahrgut</div>
-    <div class="note">Gleiche Gefahrdaten einmal eingeben und auf alle Wagen übernehmen. Abweichungen direkt pro Wagen ändern.</div>
+  box.innerHTML=`<div class="title">Schnelleingabe Wagenwerte & UN</div>
+    <div class="note">Länge über Puffer, Eigengewicht, Ladungsgewicht, Gesamtgewicht, Bremssohle, Bremsgewicht, Festhaltekraft und UN direkt bearbeiten.</div>
     <div class="wmqBulk">
       <label>UN-Nr. für alle<input id="wmqAllUn" inputmode="numeric" placeholder="z. B. 1202"></label>
-      <label>Gefahr-Nr. für alle<input id="wmqAllRid" inputmode="numeric" placeholder="z. B. 30"></label>
-      <label>Gefahrzettel für alle<input id="wmqAllLabel" value="3" placeholder="z. B. 3"></label>
       <button id="wmqApplyAll" class="btn pri" type="button">Auf alle Wagen</button>
     </div>
     <div class="wmqHint">Ladung und abweichende Gefahrdaten unten direkt ändern – ohne Wagen einzeln zu öffnen.</div>
@@ -209,7 +209,7 @@ function install(){
     #wmQuickEntry{border:2px solid #d8e3df}.wmqBulk{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;margin-top:10px}
     .wmqBulk input,.wmqRow input{background:#fffdf3;border:1px solid #c9d0cc;border-radius:8px;padding:9px 8px;font-size:15px}
     .wmqHint{font-size:11px;color:#66736f;margin:10px 0 7px}
-    .wmqRow{display:grid;grid-template-columns:1.25fr repeat(9,minmax(92px,1fr));gap:7px;align-items:end;border-top:1px solid #e3e0d8;padding:9px 0;overflow-x:auto}
+    .wmqRow{display:grid;grid-template-columns:1.25fr repeat(8,minmax(100px,1fr));gap:7px;align-items:end;border-top:1px solid #e3e0d8;padding:9px 0;overflow-x:auto}
     .wmqNo span{display:block;font-size:11px;color:#66736f;margin-top:3px}
     .wmqRow label{font-size:10px;color:#66736f}
     @media(max-width:650px){.wmqBulk{grid-template-columns:1fr 1fr}.wmqBulk button{grid-column:1/-1}.wmqRow{grid-template-columns:1fr 1fr}.wmqNo{grid-column:1/-1}}
