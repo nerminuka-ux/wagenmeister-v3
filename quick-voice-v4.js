@@ -43,6 +43,7 @@ function syncBulkFields(a){
 function renderQuick(){
   const host=$('wmQuickRows'); if(!host)return;
   const a=getTrain();
+  a.forEach(w=>{if(w.gefZettel===undefined||w.gefZettel===null||String(w.gefZettel).trim()==='')w.gefZettel='3'});
   inheritCommonDanger(a);
   host.innerHTML=a.length?a.map((w,i)=>`<div class="wmqRow" data-i="${i}">
     <div class="wmqNo"><b>${i+1}. ${esc(w.number||'')}</b><span>Tara ${num(w.tare).toFixed(2)} t · Gesamt <strong data-qtotal="${i}">${(num(w.tare)+num(w.load)).toFixed(2)} t</strong></span></div>
@@ -56,7 +57,7 @@ function renderQuick(){
   setTimeout(()=>syncBulkFields(getTrain()),350);
 }
 function applyAll(){
-  const a=getTrain(),un=$('wmqAllUn')?.value.trim()||'',rid=$('wmqAllRid')?.value.trim()||'',lab=$('wmqAllLabel')?.value.trim()||'';
+  const a=getTrain(),un=$('wmqAllUn')?.value.trim()||'',rid=$('wmqAllRid')?.value.trim()||'',lab=$('wmqAllLabel')?.value.trim()||'3';
   if(!a.length)return alert('Noch keine Wagen im Zug.');
   a.forEach(w=>{w.unNr=un;w.ridGef=rid;w.gefZettel=lab});
   saveTrain(a);renderQuick();
@@ -150,8 +151,8 @@ async function assistant(){
         a[idx].unNr=none(unText)?'':transcriptDigits(unText);
         let ridText=await listen('Welche Gefahrnummer? Sage keine, wenn keine vorhanden ist.');
         a[idx].ridGef=none(ridText)?'':transcriptDigits(ridText);
-        let labelText=await listen('Welcher Gefahrzettel? Sage keine, wenn keiner vorhanden ist.');
-        a[idx].gefZettel=none(labelText)?'':String(labelText).replace(/[^0-9A-Za-z.+/-]/g,' ').trim();
+        let labelText=await listen('Welcher Gefahrzettel? Standard ist drei. Sage andere Zahl, wenn er abweicht.');
+        a[idx].gefZettel=none(labelText)?'3':(String(labelText).replace(/[^0-9A-Za-z.+/-]/g,' ').trim()||'3');
         let allText=await listen('Gelten diese Gefahrdaten für alle Wagen im Zug?');
         if(yes(allText)){
           voiceCommonDanger={unNr:a[idx].unNr,ridGef:a[idx].ridGef,gefZettel:a[idx].gefZettel};
@@ -177,7 +178,7 @@ function install(){
     <div class="wmqBulk">
       <label>UN-Nr. für alle<input id="wmqAllUn" inputmode="numeric" placeholder="z. B. 1202"></label>
       <label>Gefahr-Nr. für alle<input id="wmqAllRid" inputmode="numeric" placeholder="z. B. 30"></label>
-      <label>Gefahrzettel für alle<input id="wmqAllLabel" placeholder="z. B. 3"></label>
+      <label>Gefahrzettel für alle<input id="wmqAllLabel" value="3" placeholder="z. B. 3"></label>
       <button id="wmqApplyAll" class="btn pri" type="button">Auf alle Wagen</button>
     </div>
     <div class="wmqHint">Ladung und abweichende Gefahrdaten unten direkt ändern – ohne Wagen einzeln zu öffnen.</div>
