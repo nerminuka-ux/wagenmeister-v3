@@ -8,6 +8,7 @@ const saveTrain=a=>{try{localStorage.setItem('wm4s_train',JSON.stringify(a));if(
 const fmtNo=v=>{const d=String(v||'').replace(/\D/g,'').slice(0,12);if(d.length<=2)return d;if(d.length<=4)return d.slice(0,2)+' '+d.slice(2);if(d.length<=8)return d.slice(0,2)+' '+d.slice(2,4)+' '+d.slice(4);if(d.length<=11)return d.slice(0,2)+' '+d.slice(2,4)+' '+d.slice(4,8)+' '+d.slice(8);return d.slice(0,2)+' '+d.slice(2,4)+' '+d.slice(4,8)+' '+d.slice(8,11)+'-'+d.slice(11)};
 const normalizeLoad=v=>{if(String(v??'').trim()==='')return'';let x=num(v);if(Math.abs(x)>=1000)x=x/1000;return +x.toFixed(2)};
 const shown=(v,d=2)=>{if(v===null||v===undefined||String(v).trim()==='')return'';const x=Number(String(v).replace(',','.'));return Number.isFinite(x)?x.toFixed(d):String(v)};
+function dangerDefaults(un){const u=String(un??'').replace(/\D/g,'');if(u==='1202'||u==='1863')return{ridGef:'30',gefZettel:'3'};if(u==='1203')return{ridGef:'33',gefZettel:'3'};return null;}
 function inheritCommonDanger(a){
   if(!Array.isArray(a)||a.length<2)return false;
   const keys=['unNr','ridGef','gefZettel'];
@@ -65,7 +66,8 @@ function renderQuick(){
 function applyAll(){
   const a=getTrain(),un=$('wmqAllUn')?.value.trim()||'',rid=$('wmqAllRid')?.value.trim()||'',lab=$('wmqAllLabel')?.value.trim()||'3';
   if(!a.length)return alert('Noch keine Wagen im Zug.');
-  a.forEach(w=>{w.unNr=un;w.ridGef=rid;w.gefZettel=lab});
+  const d=dangerDefaults(un);
+  a.forEach(w=>{w.unNr=un;w.ridGef=rid||d?.ridGef||'';w.gefZettel=lab||d?.gefZettel||'3'});
   saveTrain(a);renderQuick();
 }
 function refreshLiveTotals(a,i){
@@ -90,9 +92,13 @@ function onQuickChange(e){
   if(k==='load'){a[i].load=normalizeLoad(el.value);a[i].total=(a[i].load===''||shown(a[i].tare)==='')?'':+(num(a[i].tare)+num(a[i].load)).toFixed(2);el.value=a[i].load===''?'':Number(a[i].load).toFixed(2)}
   else if(['length','brakeP','handBrake'].includes(k))a[i][k]=String(el.value).trim()===''?'':num(el.value);
   else a[i][k]=el.value.trim();
+  if(k==='unNr'){
+    const d=dangerDefaults(a[i].unNr);
+    if(d){a[i].ridGef=d.ridGef;a[i].gefZettel=d.gefZettel;}
+  }
   if(['length','brakeShoe','brakeP','handBrake'].includes(k)&&typeof saveMasterToDB==='function')saveMasterToDB(a[i]);
   saveTrain(a);
-  refreshLiveTotals(a,i);
+  if(k==='unNr')renderQuick(); else refreshLiveTotals(a,i);
   if(['unNr','ridGef','gefZettel'].includes(k))syncBulkFields(a);
 }
 function speechCtor(){return window.SpeechRecognition||window.webkitSpeechRecognition||null}
@@ -156,10 +162,14 @@ async function assistant(){
       }else{
         let unText=await listen('Welche UN Nummer? Sage keine, wenn keine vorhanden ist.');
         a[idx].unNr=none(unText)?'':transcriptDigits(unText);
-        let ridText=await listen('Welche Gefahrnummer? Sage keine, wenn keine vorhanden ist.');
-        a[idx].ridGef=none(ridText)?'':transcriptDigits(ridText);
-        let labelText=await listen('Welcher Gefahrzettel? Standard ist drei. Sage andere Zahl, wenn er abweicht.');
-        a[idx].gefZettel=none(labelText)?'3':(String(labelText).replace(/[^0-9A-Za-z.+/-]/g,' ').trim()||'3');
+        const dd=dangerDefaults(a[idx].unNr);
+        if(dd){a[idx].ridGef=dd.ridGef;a[idx].gefZettel=dd.gefZettel;await speak('Gefahrnummer '+dd.ridGef+' und Gefahrzettel '+dd.gefZettel+' werden automatisch übernommen.');}
+        else{
+          let ridText=await listen('Welche Gefahrnummer? Sage keine, wenn keine vorhanden ist.');
+          a[idx].ridGef=none(ridText)?'':transcriptDigits(ridText);
+          let labelText=await listen('Welcher Gefahrzettel? Standard ist drei. Sage andere Zahl, wenn er abweicht.');
+          a[idx].gefZettel=none(labelText)?'3':(String(labelText).replace(/[^0-9A-Za-z.+/-]/g,' ').trim()||'3');
+        }
         let allText=await listen('Gelten diese Gefahrdaten für alle Wagen im Zug?');
         if(yes(allText)){
           voiceCommonDanger={unNr:a[idx].unNr,ridGef:a[idx].ridGef,gefZettel:a[idx].gefZettel};
