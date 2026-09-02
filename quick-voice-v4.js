@@ -77,6 +77,7 @@ function refreshLiveTotals(a,i){
   const sLoad=$('sLoad'),sTotal=$('sTotal');
   if(sLoad)sLoad.textContent=load.toFixed(1)+' t';
   if(sTotal)sTotal.textContent=Math.round(total)+' t';
+  try{if(typeof brakeRules==='function'){const br=brakeRules(a);const e=$('sBrakeEff');if(e)e.textContent=br.effective+' t';const r=$('sBrakeRule');if(r)r.textContent=br.warning?'PRÜFEN':(br.schedule==='G'?'G':(br.weight<=1200?'alle P':br.weight<=1600?'1–5 G / Rest P':'dynamisch'))}}catch{}
 }
 function onQuickInput(e){
   const el=e.target.closest('[data-qkey]');if(!el)return;
@@ -192,7 +193,7 @@ function install(){
       <label>UN-Nr. für alle<input id="wmqAllUn" inputmode="numeric" placeholder="z. B. 1202"></label>
       <button id="wmqApplyAll" class="btn pri" type="button">Auf alle Wagen</button>
     </div>
-    <div class="wmqHint">Ladung und abweichende Gefahrdaten unten direkt ändern – ohne Wagen einzeln zu öffnen.</div>
+    <div class="wmqHint">Ladung und UN unten direkt ändern. Bremsstellung und Bremsabzüge werden automatisch aus Zuggewicht und Zuglänge berechnet.</div>
     <div id="wmQuickRows"></div>`;
   current.parentNode.insertBefore(box,current);
   $('wmqApplyAll').onclick=applyAll;
