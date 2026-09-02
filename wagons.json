@@ -198,26 +198,26 @@
     "number": "33 54 7846 091-8",
     "type": "Kesselwagen",
     "axles": 4,
-    "length": null,
-    "tare": null,
-    "brakeShoe": null,
-    "brakeP": null,
+    "length": 16.4,
+    "tare": 21.35,
+    "brakeShoe": "K",
+    "brakeP": 58,
     "brakeG": null,
-    "handBrake": null,
-    "source": "Wagenlisten-Fotos",
+    "handBrake": 20.2,
+    "source": "Wagenlisten-Fotos + Oberbipp Foto 2026-09-02",
     "verifiedUIC": true
   },
   {
     "number": "33 54 7846 093-4",
     "type": "Kesselwagen",
     "axles": 4,
-    "length": null,
-    "tare": null,
-    "brakeShoe": null,
-    "brakeP": null,
+    "length": 16.4,
+    "tare": 21.6,
+    "brakeShoe": "K",
+    "brakeP": 58,
     "brakeG": null,
-    "handBrake": null,
-    "source": "Wagenlisten-Fotos Restprüfung",
+    "handBrake": 20.2,
+    "source": "Wagenlisten-Fotos Restprüfung + Oberbipp Foto 2026-09-02",
     "verifiedUIC": true
   },
   {
@@ -309,6 +309,19 @@
     "brakeG": null,
     "handBrake": 20.2,
     "source": "Wagenlisten-Fotos Sammelimport 2026-08-31",
+    "verifiedUIC": true
+  },
+  {
+    "number": "33 54 7846 124-7",
+    "type": "Kesselwagen",
+    "axles": 4,
+    "length": 16.4,
+    "tare": 21.8,
+    "brakeShoe": "K",
+    "brakeP": 58,
+    "brakeG": null,
+    "handBrake": 20.2,
+    "source": "Wagenliste Oberbipp Foto 2026-09-02",
     "verifiedUIC": true
   },
   {
@@ -1417,6 +1430,19 @@
     "verifiedUIC": true
   },
   {
+    "number": "33 80 7843 050-5",
+    "type": "Kesselwagen",
+    "axles": 4,
+    "length": 17,
+    "tare": 24.2,
+    "brakeShoe": "LL",
+    "brakeP": 58,
+    "brakeG": null,
+    "handBrake": 21.4,
+    "source": "Wagenliste Oberbipp Foto 2026-09-02",
+    "verifiedUIC": true
+  },
+  {
     "number": "33 80 7843 052-1",
     "type": "Kesselwagen",
     "axles": 4,
@@ -1911,6 +1937,19 @@
     "verifiedUIC": true
   },
   {
+    "number": "33 80 7846 326-6",
+    "type": "Kesselwagen",
+    "axles": 4,
+    "length": 16.4,
+    "tare": 22.8,
+    "brakeShoe": "K",
+    "brakeP": 64,
+    "brakeG": null,
+    "handBrake": 23,
+    "source": "Wagenliste Oberbipp Foto 2026-09-02",
+    "verifiedUIC": true
+  },
+  {
     "number": "33 80 7846 329-0",
     "type": "Kesselwagen",
     "axles": 4,
@@ -2106,6 +2145,19 @@
     "verifiedUIC": true
   },
   {
+    "number": "33 80 7846 483-5",
+    "type": "Kesselwagen",
+    "axles": 4,
+    "length": 16.69,
+    "tare": 22.25,
+    "brakeShoe": "K",
+    "brakeP": 60,
+    "brakeG": null,
+    "handBrake": 22.1,
+    "source": "Wagenliste Oberbipp Foto 2026-09-02",
+    "verifiedUIC": true
+  },
+  {
     "number": "33 80 7846 486-8",
     "type": "Kesselwagen",
     "axles": 4,
@@ -2184,6 +2236,19 @@
     "verifiedUIC": true
   },
   {
+    "number": "33 80 7848 370-2",
+    "type": "Kesselwagen",
+    "axles": 4,
+    "length": 17,
+    "tare": 23.95,
+    "brakeShoe": "LL",
+    "brakeP": 58,
+    "brakeG": null,
+    "handBrake": 21.4,
+    "source": "Wagenliste Oberbipp Foto 2026-09-02",
+    "verifiedUIC": true
+  },
+  {
     "number": "33 80 7848 380-1",
     "type": "Kesselwagen",
     "axles": 4,
@@ -2252,13 +2317,13 @@
     "number": "33 80 7848 712-5",
     "type": "Kesselwagen",
     "axles": 4,
-    "length": null,
-    "tare": null,
-    "brakeShoe": null,
-    "brakeP": null,
+    "length": 17,
+    "tare": 23.8,
+    "brakeShoe": "LL",
+    "brakeP": 58,
     "brakeG": null,
-    "handBrake": null,
-    "source": "Wagenlisten-Fotos Restprüfung",
+    "handBrake": 21.4,
+    "source": "Wagenlisten-Fotos Restprüfung + Oberbipp Foto 2026-09-02",
     "verifiedUIC": true
   },
   {
@@ -2389,6 +2454,19 @@
     "brakeG": null,
     "handBrake": null,
     "source": "Wagenlisten-Fotos Restprüfung",
+    "verifiedUIC": true
+  },
+  {
+    "number": "33 81 7848 492-3",
+    "type": "Kesselwagen",
+    "axles": 4,
+    "length": 16.48,
+    "tare": 23.6,
+    "brakeShoe": "LL",
+    "brakeP": 58,
+    "brakeG": null,
+    "handBrake": 25.7,
+    "source": "Wagenliste Oberbipp Foto 2026-09-02",
     "verifiedUIC": true
   },
   {
@@ -2938,6 +3016,19 @@
     "verifiedUIC": true
   },
   {
+    "number": "35 80 7830 127-4",
+    "type": "Kesselwagen",
+    "axles": 4,
+    "length": 16.4,
+    "tare": 23.6,
+    "brakeShoe": "K",
+    "brakeP": 64,
+    "brakeG": null,
+    "handBrake": 23,
+    "source": "Wagenliste Oberbipp Foto 2026-09-02",
+    "verifiedUIC": true
+  },
+  {
     "number": "35 80 7830 128-2",
     "type": "Kesselwagen",
     "axles": 4,
@@ -3214,13 +3305,13 @@
     "number": "35 80 7830 167-0",
     "type": "Kesselwagen",
     "axles": 4,
-    "length": null,
-    "tare": null,
-    "brakeShoe": null,
-    "brakeP": null,
+    "length": 16.4,
+    "tare": 22.7,
+    "brakeShoe": "K",
+    "brakeP": 64,
     "brakeG": null,
-    "handBrake": null,
-    "source": "Wagenlisten-Fotos",
+    "handBrake": 23,
+    "source": "Wagenlisten-Fotos + Oberbipp Foto 2026-09-02",
     "verifiedUIC": true
   },
   {
@@ -3367,6 +3458,32 @@
     "verifiedUIC": true
   },
   {
+    "number": "35 80 7830 208-2",
+    "type": "Kesselwagen",
+    "axles": 4,
+    "length": 16.4,
+    "tare": 22.8,
+    "brakeShoe": "K",
+    "brakeP": 64,
+    "brakeG": null,
+    "handBrake": 23,
+    "source": "Wagenliste Oberbipp Foto 2026-09-02",
+    "verifiedUIC": true
+  },
+  {
+    "number": "35 80 7830 209-0",
+    "type": "Kesselwagen",
+    "axles": 4,
+    "length": 16.4,
+    "tare": 22.7,
+    "brakeShoe": "K",
+    "brakeP": 64,
+    "brakeG": null,
+    "handBrake": 23,
+    "source": "Wagenliste Oberbipp Foto 2026-09-02",
+    "verifiedUIC": true
+  },
+  {
     "number": "35 80 7830 220-7",
     "type": "Kesselwagen",
     "axles": 4,
@@ -3416,6 +3533,19 @@
     "brakeG": null,
     "handBrake": null,
     "source": "weitere Wagenlisten-Fotos",
+    "verifiedUIC": true
+  },
+  {
+    "number": "35 80 7830 243-9",
+    "type": "Kesselwagen",
+    "axles": 4,
+    "length": 16.4,
+    "tare": 22.8,
+    "brakeShoe": "K",
+    "brakeP": 64,
+    "brakeG": null,
+    "handBrake": 23,
+    "source": "Wagenliste Oberbipp Foto 2026-09-02",
     "verifiedUIC": true
   },
   {
@@ -4345,13 +4475,13 @@
     "number": "37 80 7929 105-0",
     "type": "Kesselwagen",
     "axles": 4,
-    "length": null,
-    "tare": null,
-    "brakeShoe": null,
-    "brakeP": null,
+    "length": 16.4,
+    "tare": 21.9,
+    "brakeShoe": "K",
+    "brakeP": 58,
     "brakeG": null,
-    "handBrake": null,
-    "source": "Wagenlisten-Fotos Restprüfung",
+    "handBrake": 20.2,
+    "source": "Wagenlisten-Fotos Restprüfung + Oberbipp Foto 2026-09-02",
     "verifiedUIC": true
   },
   {
@@ -4664,6 +4794,19 @@
     "brakeG": null,
     "handBrake": null,
     "source": "weitere Wagenlisten-Fotos",
+    "verifiedUIC": true
+  },
+  {
+    "number": "37 80 7929 370-0",
+    "type": "Kesselwagen",
+    "axles": 4,
+    "length": 16.4,
+    "tare": 23,
+    "brakeShoe": "K",
+    "brakeP": 64,
+    "brakeG": null,
+    "handBrake": 23,
+    "source": "Wagenliste Oberbipp Foto 2026-09-02",
     "verifiedUIC": true
   },
   {
@@ -5177,13 +5320,13 @@
     "number": "37 84 7840 238-1",
     "type": "Kesselwagen",
     "axles": 4,
-    "length": null,
-    "tare": null,
-    "brakeShoe": null,
-    "brakeP": null,
+    "length": 16.69,
+    "tare": 22.35,
+    "brakeShoe": "K",
+    "brakeP": 59,
     "brakeG": null,
-    "handBrake": null,
-    "source": "Wagenlisten-Fotos Restprüfung",
+    "handBrake": 22,
+    "source": "Wagenlisten-Fotos Restprüfung + Oberbipp Foto 2026-09-02",
     "verifiedUIC": true
   },
   {
@@ -5255,13 +5398,26 @@
     "number": "37 84 7841 231-5",
     "type": "Kesselwagen",
     "axles": 4,
-    "length": null,
-    "tare": null,
-    "brakeShoe": null,
-    "brakeP": null,
+    "length": 17,
+    "tare": 23.85,
+    "brakeShoe": "K",
+    "brakeP": 59,
     "brakeG": null,
-    "handBrake": null,
-    "source": "weitere Wagenlisten-Fotos",
+    "handBrake": 22.7,
+    "source": "weitere Wagenlisten-Fotos + Oberbipp Foto 2026-09-02",
+    "verifiedUIC": true
+  },
+  {
+    "number": "37 84 7841 236-4",
+    "type": "Kesselwagen",
+    "axles": 4,
+    "length": 17,
+    "tare": 24,
+    "brakeShoe": "K",
+    "brakeP": 59,
+    "brakeG": null,
+    "handBrake": 22.7,
+    "source": "Wagenliste Oberbipp Foto 2026-09-02",
     "verifiedUIC": true
   },
   {
@@ -5379,6 +5535,19 @@
     "brakeG": null,
     "handBrake": 23.8,
     "source": "Wagenlisten-Fotos + Sammelimport 2026-08-31",
+    "verifiedUIC": true
+  },
+  {
+    "number": "37 84 7841 339-6",
+    "type": "Kesselwagen",
+    "axles": 4,
+    "length": 17,
+    "tare": 24.15,
+    "brakeShoe": "K",
+    "brakeP": 59,
+    "brakeG": null,
+    "handBrake": 22.7,
+    "source": "Wagenliste Oberbipp Foto 2026-09-02",
     "verifiedUIC": true
   },
   {
