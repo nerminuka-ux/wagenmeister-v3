@@ -15,15 +15,19 @@ const fixTrain=()=>{
   if(typeof train==='undefined'||!Array.isArray(train))return;
   let changed=false;
   train.forEach(w=>{
-   const load=loadTonnes(w.load);
-   let tare=parse(w.tare); // Tara is always already stored in tonnes. NEVER divide it by 1000.
+   const loadBlank=String(w.load??'').trim()==='',tareBlank=String(w.tare??'').trim()==='';
+   const load=loadBlank?'':loadTonnes(w.load);
+   let tare=tareBlank?'':parse(w.tare); // Tara is always already stored in tonnes. NEVER divide it by 1000.
    const mt=masterTare(w.number);
    // Repair values damaged by the previous kg-normalizer, e.g. 22.35 t -> 2.23 t.
-   if(tare>0&&tare<5&&mt){tare=mt}
-   const tot=+(tare+load).toFixed(2);
-   if(Math.abs(parse(w.load)-load)>0.0001){w.load=load;changed=true}
-   if(Math.abs(parse(w.tare)-tare)>0.0001){w.tare=tare;changed=true}
-   if(Math.abs(parse(w.total)-tot)>0.0001){w.total=tot;changed=true}
+   if(!tareBlank&&tare>0&&tare<5&&mt){tare=mt}
+   const tot=(!loadBlank&&!tareBlank)?+(Number(tare)+Number(load)).toFixed(2):'';
+   if(loadBlank){if(w.load!==''&&w.load!==null&&w.load!==undefined){w.load='';changed=true}}
+   else if(Math.abs(parse(w.load)-load)>0.0001){w.load=load;changed=true}
+   if(tareBlank){if(w.tare!==''&&w.tare!==null&&w.tare!==undefined){w.tare='';changed=true}}
+   else if(Math.abs(parse(w.tare)-tare)>0.0001){w.tare=tare;changed=true}
+   if(tot===''){if(w.total!==''&&w.total!==null&&w.total!==undefined){w.total='';changed=true}}
+   else if(Math.abs(parse(w.total)-tot)>0.0001){w.total=tot;changed=true}
   });
   if(changed){localStorage.setItem('wm4s_train',JSON.stringify(train));try{render?.()}catch{}}
  }catch{}
