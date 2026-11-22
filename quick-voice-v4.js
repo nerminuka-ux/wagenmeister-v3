@@ -127,16 +127,7 @@ function decimalFromSpeech(s){
   const p=t.split('.');if(p.length>2)t=p.shift()+'.'+p.join('');
   return normalizeLoad(t);
 }
-async function speakWagonNumber(){
-  try{
-    const text=await listen('Bitte Wagennummer nennen.');
-    const d=transcriptDigits(text).slice(0,12);
-    if(d.length!==12)throw new Error('Ich habe keine vollständige zwölfstellige Wagennummer verstanden.');
-    const input=$('wagonSearch');input.value=fmtNo(d);input.dispatchEvent(new Event('input',{bubbles:true}));
-    await speak('Wagennummer '+fmtNo(d)+' wurde eingetragen.');
-  }catch(e){alert(e.message||e)}
-}
-let voiceRunning=false,voiceCommonDanger=null;
+async let voiceRunning=false,voiceCommonDanger=null;
 async function assistant(){
   if(voiceRunning)return;voiceRunning=true;
   const b=$('wmVoiceAssistant');if(b){b.disabled=true;b.textContent='🎙️ Assistent läuft …'}
@@ -201,10 +192,9 @@ function install(){
   box.addEventListener('change',onQuickChange);
   const addCard=$('wagonSearch')?.closest('.card');
   const actions=addCard?.querySelector('.actions');
-  if(actions&&!$('wmSpeakNumber')){
-    const one=document.createElement('button');one.id='wmSpeakNumber';one.type='button';one.className='btn sec';one.textContent='🎙️ Wagennummer sprechen';one.onclick=speakWagonNumber;
+  if(actions&&!$('wmVoiceAssistant')){
     const as=document.createElement('button');as.id='wmVoiceAssistant';as.type='button';as.className='btn pri';as.textContent='🗣️ Sprach-Assistent';as.onclick=assistant;
-    actions.appendChild(one);actions.appendChild(as);
+    actions.appendChild(as);
   }
   const st=document.createElement('style');st.textContent=`
     #wmQuickEntry{border:2px solid #d8e3df}.wmqBulk{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;margin-top:10px}
@@ -220,5 +210,5 @@ function install(){
 setTimeout(install,0);setTimeout(install,600);
 window.addEventListener('pageshow',()=>{renderQuick();setTimeout(()=>syncBulkFields(getTrain()),200)});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(()=>syncBulkFields(getTrain()),150)});
-window.WMQuickVoiceV4={renderQuick,assistant,speakWagonNumber};
+window.WMQuickVoiceV4={renderQuick,assistant};
 })();
