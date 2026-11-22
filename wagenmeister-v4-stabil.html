@@ -75,8 +75,8 @@ async function loadDB(){try{const r=await fetch('./wagons.json?v='+Date.now(),{c
 function show(id){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));$(id).classList.add('active');document.querySelectorAll('.nav').forEach(b=>b.classList.toggle('active',b.dataset.view===id));render()}
 document.querySelectorAll('.nav').forEach(b=>b.addEventListener('click',()=>show(b.dataset.view)));
 function speechNumberDigits(value){
- const words={null:'0',nul:'0',oh:'0',zero:'0',ein:'1',eins:'1',eine:'1',einen:'1',zwei:'2',zwo:'2',drei:'3',vier:'4',fuenf:'5',fünf:'5',funf:'5',sechs:'6',sieben:'7',acht:'8',neun:'9'};
- return String(value||'').toLowerCase().replace(/[.,;:/\\-]+/g,' ').split(/\\s+/).map(token=>words[token]??token).join('').replace(/\\D/g,'').slice(0,12);
+ const words={'null':'0','nul':'0','oh':'0','zero':'0','ein':'1','eins':'1','eine':'1','einen':'1','zwei':'2','zwo':'2','drei':'3','vier':'4','fuenf':'5','fünf':'5','funf':'5','sechs':'6','sieben':'7','acht':'8','neun':'9'};
+ return String(value||'').toLowerCase().replace(/[.,;:/-]+/g,' ').split(/\s+/).map(token=>words[token]??token).join('').replace(/\D/g,'').slice(0,12);
 }
 $('wagonSearch').addEventListener('input',e=>{e.target.value=fmt(speechNumberDigits(e.target.value));const d=norm(e.target.value),s=$('uic');if(!d){s.style.display='none';return}if(d.length<12){s.className='status';s.style.display='block';s.textContent=d.length+'/12 Ziffern'}else if(valid(d)){s.className='status good';s.textContent='✓ Prüfziffer stimmt'+(db.some(w=>norm(w.number)===d)?' · Datenbanktreffer':'')}else{s.className='status bad';s.textContent='✕ Prüfziffer stimmt nicht'}});
 function addWagon(no){const d=norm(no);if(!valid(d))return alert('Wagennummer oder Prüfziffer ist ungültig.');if(train.some(w=>norm(w.number)===d))return alert('Wagen ist bereits im Zug.');const m=db.find(w=>norm(w.number)===d)||{number:fmt(d)};train.push({...master(m),state:'beladen',load:'',total:'',effectiveBrakes:valNum(m.axles),ridGef:'',unNr:'',gefZettel:String(blank(m.gefZettel)?'3':m.gefZettel),vmax:'',routeClass:'',remarks:''});persist();render();$('wagonSearch').value='';openW(train.length-1)}
