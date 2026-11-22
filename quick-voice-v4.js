@@ -127,7 +127,7 @@ function decimalFromSpeech(s){
   const p=t.split('.');if(p.length>2)t=p.shift()+'.'+p.join('');
   return normalizeLoad(t);
 }
-async let voiceRunning=false,voiceCommonDanger=null;
+let voiceRunning=false,voiceCommonDanger=null;
 async function assistant(){
   if(voiceRunning)return;voiceRunning=true;
   const b=$('wmVoiceAssistant');if(b){b.disabled=true;b.textContent='🎙️ Assistent läuft …'}
