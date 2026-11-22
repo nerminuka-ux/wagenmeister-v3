@@ -1,6 +1,6 @@
 (()=>{
   const $=id=>document.getElementById(id);
-  const norm=v=>String(v||'').replace(/\\D/g,'');
+  const norm=v=>String(v||'').replace(/\D/g,'');
   const validUIC=v=>{const d=norm(v);if(d.length!==12)return false;let s=0;for(let i=0;i<11;i++){const x=Number(d[i])*(i%2?1:2);s+=Math.floor(x/10)+x%10;}return(10-s%10)%10===Number(d[11]);};
   const fmt=v=>{const d=norm(v).slice(0,12);return d.length===12?d.slice(0,2)+' '+d.slice(2,4)+' '+d.slice(4,8)+' '+d.slice(8,11)+'-'+d.slice(11):v};
   const btn=$('cameraBtn'),input=$('cameraInput');if(!btn||!input)return;
@@ -12,8 +12,8 @@
   function candidatesFrom(text){
     const cleaned=String(text||'').toUpperCase().replace(/[OQ]/g,'0').replace(/[IL|]/g,'1').replace(/S/g,'5').replace(/B/g,'8').replace(/Z/g,'2');
     const out=[];
-    for(const line of cleaned.split(/[\\r\\n]+/)){const d=norm(line);if(d.length>=12&&d.length<=32)for(let i=0;i<=d.length-12;i++)out.push(d.slice(i,i+12));}
-    for(const m of cleaned.matchAll(/[0-9][0-9\\s.\\-\\/]{8,50}[0-9]/g)){const d=norm(m[0]);for(let i=0;i<=d.length-12;i++)out.push(d.slice(i,i+12));}
+    for(const line of cleaned.split(/[\r\n]+/)){const d=norm(line);if(d.length>=12&&d.length<=32)for(let i=0;i<=d.length-12;i++)out.push(d.slice(i,i+12));}
+    for(const m of cleaned.matchAll(/[0-9][0-9\s.\-/]{8,50}[0-9]/g)){const d=norm(m[0]);for(let i=0;i<=d.length-12;i++)out.push(d.slice(i,i+12));}
     return [...new Set(out.filter(x=>x.length===12))];
   }
   function hamming(a,b){if(a.length!==b.length)return 99;let n=0;for(let i=0;i<a.length;i++)if(a[i]!==b[i])n++;return n;}
