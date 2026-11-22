@@ -41,11 +41,11 @@ function rowsFrom(result,canvas){
  const unique=[],seen=new Set();
  found.sort((a,b)=>a.y-b.y).forEach(x=>{if(!seen.has(x.number)){seen.add(x.number);unique.push(x);}});
  const zones=[
-  {key:'loadKg',min:.745,max:.845},
-  {key:'tareKg',min:.845,max:.915},
-  {key:'grossKg',min:.915,max:.985}
+  {key:'loadKg',min:.735,max:.810},
+  {key:'tareKg',min:.810,max:.880},
+  {key:'grossKg',min:.880,max:.960}
  ];
- const rowTol=Math.max(13,canvas.height*.012);
+ const rowTol=Math.max(7,canvas.height*.006);
  return unique.map(row=>{
   const out={number:row.number,loadKg:0,tareKg:0,grossKg:0};
   for(const z of zones){
