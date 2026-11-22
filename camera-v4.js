@@ -8,7 +8,7 @@
   if(!status){status=document.createElement('div');status.id='cameraStatus';status.className='status';input.closest('.card')?.appendChild(status);}
   const say=(message,ok=false)=>{status.style.display='block';status.className='status '+(ok?'good':'bad');status.textContent=message;};
   let busy=false;
-  function dbNumbers(){const out=new Set();try{if(Array.isArray(window.db))window.db.forEach(w=>{const d=norm(w?.number);if(d.length===12)out.add(d);});}catch{}try{const saved=JSON.parse(localStorage.getItem('wm4s_db')||'[]');if(Array.isArray(saved))saved.forEach(w=>{const d=norm(w?.number);if(d.length===12)out.add(d);});}catch{}return out;}
+  function dbNumbers(){const out=new Set();try{if(typeof db!=='undefined'&&Array.isArray(db))db.forEach(w=>{const d=norm(w?.number);if(d.length===12)out.add(d);});}catch{}try{const saved=JSON.parse(localStorage.getItem('wm4s_db')||'[]');if(Array.isArray(saved))saved.forEach(w=>{const d=norm(w?.number);if(d.length===12)out.add(d);});}catch{}return out;}
   function candidatesFrom(text){
     const cleaned=String(text||'').toUpperCase().replace(/[OQ]/g,'0').replace(/[IL|]/g,'1').replace(/S/g,'5').replace(/B/g,'8').replace(/Z/g,'2');
     const out=[];
