@@ -68,8 +68,16 @@ $('manifestRead').addEventListener('click',async()=>{const file=$('manifestFile'
  const pages=await canvasesFrom(file);let all=[];for(let i=0;i<pages.length;i++){say('Seite '+(i+1)+' von '+pages.length+' wird gelesen …');const r=await window.Tesseract.recognize(pages[i],'eng',{tessedit_char_whitelist:'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz -',tessedit_pageseg_mode:'6'});all=all.concat(rowsFrom(r,pages[i]));}
  const seen=new Set();all=all.filter(w=>!seen.has(w.number)&&seen.add(w.number));showRows(all);say(all.length+' Wagen erkannt. Bitte Vorschau prüfen.',all.length>0);
  }catch(e){console.error('Teil-Wagenliste:',e);say(e?.message||'Die Wagenliste konnte nicht gelesen werden.');}});
-importBtn.addEventListener('click',()=>{if(!parsed.length)return;let added=0,skipped=0;for(const w of parsed){if(w.number.length!==12||train.some(x=>norm(x.number)===w.number)){skipped++;continue;}
+importBtn.addEventListener('click',()=>{if(!parsed.length){say('Keine erkannten Wagen zum Übernehmen vorhanden.');return;}try{let added=0,updated=0,skipped=0;for(const w of parsed){if(w.number.length!==12){skipped++;continue;}
  const load=w.loadKg?+(w.loadKg/1000).toFixed(3):'',tare=w.tareKg?+(w.tareKg/1000).toFixed(3):'',total=w.grossKg?+(w.grossKg/1000).toFixed(3):(load!==''&&tare!==''?+(Number(load)+Number(tare)).toFixed(3):'');
- train.push({number:fmt(w.number),type:'Kesselwagen',axles:'',length:'',tare,load,total,manifestLoadKg:w.loadKg||'',manifestTareKg:w.tareKg||'',manifestGrossKg:w.grossKg||'',state:'beladen',brakeShoe:'',brakeP:'',brakeG:'',handBrake:'',effectiveBrakes:'',ridGef:'',unNr:'1202',gefZettel:'3',vmax:'',routeClass:'',remarks:'Teil-Wagenliste importiert'});added++;}
- persist();render();say(added+' Wagen übernommen'+(skipped?', '+skipped+' übersprungen (Duplikat oder ungültig).':''),true);parsed=[];importBtn.disabled=true;preview.innerHTML='';});
+ const existing=train.find(x=>norm(x.number)===w.number);
+ const fields={number:fmt(w.number),type:'Kesselwagen',state:'beladen',unNr:'1202',gefZettel:'3',remarks:'Teil-Wagenliste importiert'};
+ if(load!==''){fields.load=load;fields.manifestLoadKg=w.loadKg;}
+ if(tare!==''){fields.tare=tare;fields.manifestTareKg=w.tareKg;}
+ if(total!==''){fields.total=total;fields.manifestGrossKg=w.grossKg||'';}
+ if(existing){Object.assign(existing,fields);updated++;}
+ else{train.push({...fields,axles:'',length:'',load,tare,total,manifestLoadKg:w.loadKg||'',manifestTareKg:w.tareKg||'',manifestGrossKg:w.grossKg||'',brakeShoe:'',brakeP:'',brakeG:'',handBrake:'',effectiveBrakes:'',ridGef:'',vmax:'',routeClass:''});added++;}
+ }
+ persist();render();say(added+' neue Wagen hinzugefügt, '+updated+' vorhandene Wagen aktualisiert'+(skipped?', '+skipped+' ungültige Zeilen übersprungen.':'.'),true);parsed=[];importBtn.disabled=true;preview.innerHTML='';importBtn.textContent='Wagen in den Zug übernehmen';
+ }catch(e){console.error('Import in Zug fehlgeschlagen:',e);say('Übernahme fehlgeschlagen: '+(e?.message||'Unbekannter Fehler'));}});
 })();
