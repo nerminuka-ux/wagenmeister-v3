@@ -60,9 +60,24 @@ function rowsFrom(result,canvas){
   return out;
  });
 }
-function showRows(rows){parsed=rows;importBtn.disabled=!rows.length;importBtn.textContent=rows.length+' Wagen in den Zug übernehmen';if(!rows.length){preview.innerHTML='';return;}
- preview.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th>Nr.</th><th>Wagennummer</th><th>Ladung kg</th><th>Tara kg</th><th>Brutto kg</th></tr></thead><tbody>'+rows.map((w,i)=>'<tr><td>'+(i+1)+'</td><td>'+fmt(w.number)+'</td><td>'+(w.loadKg||'—')+'</td><td>'+(w.tareKg||'—')+'</td><td>'+(w.grossKg||'—')+'</td></tr>').join('')+'</tbody></table><div class="note">Bitte Vorschau kontrollieren. Nicht erkannte Werte bleiben leer.</div>';
+function validUIC(n){
+ if(!/^\d{12}$/.test(n))return false;
+ let sum=0;for(let i=0;i<11;i++){let v=Number(n[i])*(i%2===0?2:1);sum+=Math.floor(v/10)+(v%10);}
+ return (10-sum%10)%10===Number(n[11]);
 }
+function showRows(rows){
+ parsed=rows;importBtn.disabled=!rows.length;importBtn.textContent=rows.length+' Wagen in den Zug übernehmen';if(!rows.length){preview.innerHTML='';return;}
+ const cell=(v,i,k)=>'<td><input inputmode="numeric" data-row="'+i+'" data-key="'+k+'" value="'+(v||'')+'" placeholder="—" style="width:100%;min-width:65px;box-sizing:border-box;padding:5px;border:1px solid #bbb;border-radius:5px"></td>';
+ preview.innerHTML='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th>Nr.</th><th>Wagennummer</th><th>Ladung kg</th><th>Tara kg</th><th>Brutto kg</th><th>Prüfung</th></tr></thead><tbody>'+rows.map((w,i)=>'<tr><td>'+(i+1)+'</td>'+cell(w.number,i,'number')+cell(w.loadKg,i,'loadKg')+cell(w.tareKg,i,'tareKg')+cell(w.grossKg,i,'grossKg')+'<td data-check="'+i+'">'+(validUIC(w.number)?'✓':'Prüfen')+'</td></tr>').join('')+'</tbody></table></div><div class="note">Alle Felder sind vor dem Import korrigierbar. Wagennummern mit ungültiger Prüfziffer bitte kontrollieren.</div>';
+}
+preview.addEventListener('change',e=>{
+ const el=e.target.closest('input[data-row][data-key]');if(!el)return;
+ const i=Number(el.dataset.row),k=el.dataset.key;if(!parsed[i])return;
+ const value=norm(el.value);
+ if(k==='number'){if(value.length!==12){say('Wagennummer muss 12 Ziffern haben.');return;}parsed[i].number=value;const check=preview.querySelector('[data-check="'+i+'"]');if(check)check.textContent=validUIC(value)?'✓':'Prüfen';}
+ else parsed[i][k]=value?Number(value):0;
+});
+
 $('manifestRead').addEventListener('click',async()=>{const file=$('manifestFile').files?.[0];if(!file){say('Bitte zuerst ein Foto oder PDF auswählen.');return;}showRows([]);say('Datei wird vorbereitet …');try{
  await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',()=>!!window.Tesseract?.recognize);
  const pages=await canvasesFrom(file);let all=[];for(let i=0;i<pages.length;i++){say('Seite '+(i+1)+' von '+pages.length+' wird gelesen …');const r=await window.Tesseract.recognize(pages[i],'eng',{tessedit_char_whitelist:'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz -',tessedit_pageseg_mode:'6'});all=all.concat(rowsFrom(r,pages[i]));}
