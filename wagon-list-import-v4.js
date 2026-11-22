@@ -22,12 +22,42 @@ async function canvasesFrom(file){
 }
 function rowsFrom(result,canvas){
  const words=result?.data?.words||[],lines=result?.data?.lines||[],found=[];
- for(const line of lines){const t=line.text||'';for(const m of t.matchAll(/(?:\d[\s-]*){12}/g)){const d=norm(m[0]);if(d.length===12)found.push({number:d,y:((line.bbox?.y0||0)+(line.bbox?.y1||0))/2,tail:t.slice((m.index||0)+m[0].length)});}}
- if(!found.length)for(const w of words){const d=norm(w.text);if(d.length===12)found.push({number:d,y:((w.bbox?.y0||0)+(w.bbox?.y1||0))/2,tail:''});}
- const seen=new Set();return found.filter(x=>!seen.has(x.number)&&seen.add(x.number)).map(c=>{
-  let v=(c.tail.match(/\b\d{5,6}\b/g)||[]).map(Number);
-  if(v.length<3){const near=words.filter(w=>{const y=((w.bbox?.y0||0)+(w.bbox?.y1||0))/2,x=((w.bbox?.x0||0)+(w.bbox?.x1||0))/2;return Math.abs(y-c.y)<canvas.height*.018&&x>canvas.width*.62;}).sort((a,b)=>(a.bbox?.x0||0)-(b.bbox?.x0||0));v=near.map(w=>Number(norm(w.text))).filter(n=>n>=10000&&n<=999999);}
-  return{number:c.number,loadKg:v[0]||0,tareKg:v[1]||0,grossKg:v[2]||0};
+ // Wagennummern stehen links in der Wagen-Spalte. Die drei Massen werden
+ // ausschließlich aus ihren festen Spalten rechts gelesen.
+ for(const line of lines){
+  const t=line.text||'';
+  for(const m of t.matchAll(/(?:\d[\s-]*){12}/g)){
+   const d=norm(m[0]);
+   if(d.length===12)found.push({number:d,y:((line.bbox?.y0||0)+(line.bbox?.y1||0))/2});
+  }
+ }
+ if(!found.length){
+  for(const w of words){
+   const x=((w.bbox?.x0||0)+(w.bbox?.x1||0))/2;
+   const d=norm(w.text);
+   if(x<canvas.width*.27&&d.length===12)found.push({number:d,y:((w.bbox?.y0||0)+(w.bbox?.y1||0))/2});
+  }
+ }
+ const unique=[],seen=new Set();
+ found.sort((a,b)=>a.y-b.y).forEach(x=>{if(!seen.has(x.number)){seen.add(x.number);unique.push(x);}});
+ const zones=[
+  {key:'loadKg',min:.745,max:.845},
+  {key:'tareKg',min:.845,max:.915},
+  {key:'grossKg',min:.915,max:.985}
+ ];
+ const rowTol=Math.max(13,canvas.height*.012);
+ return unique.map(row=>{
+  const out={number:row.number,loadKg:0,tareKg:0,grossKg:0};
+  for(const z of zones){
+   const candidates=words.map(w=>{
+    const x0=w.bbox?.x0??0,x1=w.bbox?.x1??0,y0=w.bbox?.y0??0,y1=w.bbox?.y1??0;
+    const x=(x0+x1)/2,y=(y0+y1)/2,d=norm(w.text);
+    return{x,y,d};
+   }).filter(w=>w.x>=canvas.width*z.min&&w.x<canvas.width*z.max&&Math.abs(w.y-row.y)<=rowTol&&/^\d{5,6}$/.test(w.d));
+   candidates.sort((a,b)=>Math.abs(a.y-row.y)-Math.abs(b.y-row.y));
+   if(candidates.length)out[z.key]=Number(candidates[0].d);
+  }
+  return out;
  });
 }
 function showRows(rows){parsed=rows;importBtn.disabled=!rows.length;importBtn.textContent=rows.length+' Wagen in den Zug übernehmen';if(!rows.length){preview.innerHTML='';return;}
