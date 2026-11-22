@@ -190,12 +190,7 @@ function install(){
   $('wmqApplyAll').onclick=applyAll;
   box.addEventListener('input',onQuickInput);
   box.addEventListener('change',onQuickChange);
-  const addCard=$('wagonSearch')?.closest('.card');
-  const actions=addCard?.querySelector('.actions');
-  if(actions&&!$('wmVoiceAssistant')){
-    const as=document.createElement('button');as.id='wmVoiceAssistant';as.type='button';as.className='btn pri';as.textContent='🗣️ Sprach-Assistent';as.onclick=assistant;
-    actions.appendChild(as);
-  }
+
   const st=document.createElement('style');st.textContent=`
     #wmQuickEntry{border:2px solid #d8e3df}.wmqBulk{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;margin-top:10px}
     .wmqBulk input,.wmqRow input{background:#fffdf3;border:1px solid #c9d0cc;border-radius:8px;padding:9px 8px;font-size:15px}
@@ -210,5 +205,5 @@ function install(){
 setTimeout(install,0);setTimeout(install,600);
 window.addEventListener('pageshow',()=>{renderQuick();setTimeout(()=>syncBulkFields(getTrain()),200)});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(()=>syncBulkFields(getTrain()),150)});
-window.WMQuickVoiceV4={renderQuick,assistant};
+window.WMQuickVoiceV4={renderQuick};
 })();
