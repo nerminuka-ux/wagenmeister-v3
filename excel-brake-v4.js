@@ -7,7 +7,7 @@ function form(){try{return {trainNo:document.getElementById('trainNo')?.value||'
 function dateDE(v){if(!v)return'';const p=v.split('-');return p.length===3?p[2]+'.'+p[1]+'.'+p[0]:v}
 function sum(a,k){return a.reduce((s,w)=>s+n(w?.[k]),0)}
 function activeMode(w){return String(w?.brakeMode||'P').toUpperCase()==='G'?'G':'P'}
-function brakeWeight(a){let p=0,g=0;a.forEach(w=>{if(activeMode(w)==='G')g+=n(w.brakeG);else p+=n(w.brakeP)});return Math.floor(p)+(g*.75)}
+function brakeWeight(a){try{window.WMBrakeRules?.apply?.(a)}catch(e){console.warn('Bremsregeln für Export konnten nicht angewendet werden:',e)}return Math.floor(sum(a,'effectiveBrakeWeight'))}
 function render(){
  const host=document.getElementById('wmxHost');const tab=document.querySelector('.wmxTab.active');
  if(!host||tab?.dataset.tab!=='brems')return;
