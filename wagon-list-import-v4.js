@@ -74,7 +74,7 @@ preview.addEventListener('change',e=>{
  const el=e.target.closest('input[data-row][data-key]');if(!el)return;
  const i=Number(el.dataset.row),k=el.dataset.key;if(!parsed[i])return;
  const value=norm(el.value);
- if(k==='number'){if(value.length!==12){say('Wagennummer muss 12 Ziffern haben.');return;}parsed[i].number=value;const check=preview.querySelector('[data-check="'+i+'"]');if(check)check.textContent=validUIC(value)?'✓':'Prüfen';}
+ if(k==='number'){parsed[i].number=value;const check=preview.querySelector('[data-check="'+i+'"]');if(check)check.textContent=validUIC(value)?'✓':'Prüfen';}
  else parsed[i][k]=value?Number(value):0;
 });
 
@@ -83,10 +83,11 @@ $('manifestRead').addEventListener('click',async()=>{const file=$('manifestFile'
  const pages=await canvasesFrom(file);let all=[];for(let i=0;i<pages.length;i++){say('Seite '+(i+1)+' von '+pages.length+' wird gelesen …');const r=await window.Tesseract.recognize(pages[i],'eng',{tessedit_char_whitelist:'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz -',tessedit_pageseg_mode:'6'});all=all.concat(rowsFrom(r,pages[i]));}
  const seen=new Set();all=all.filter(w=>!seen.has(w.number)&&seen.add(w.number));showRows(all);say(all.length+' Wagen erkannt. Bitte Vorschau prüfen.',all.length>0);
  }catch(e){console.error('Teil-Wagenliste:',e);say(e?.message||'Die Wagenliste konnte nicht gelesen werden.');}});
-importBtn.addEventListener('click',()=>{if(!parsed.length){say('Keine erkannten Wagen zum Übernehmen vorhanden.');return;}try{let added=0,updated=0,skipped=0;for(const w of parsed){if(w.number.length!==12){skipped++;continue;}
+importBtn.addEventListener('click',()=>{if(!parsed.length){say('Keine erkannten Wagen zum Übernehmen vorhanden.');return;}try{let added=0,updated=0,skipped=0;for(const w of parsed){if(!validUIC(w.number)){skipped++;continue;}
  const load=w.loadKg?+(w.loadKg/1000).toFixed(3):'',tare=w.tareKg?+(w.tareKg/1000).toFixed(3):'',total=w.grossKg?+(w.grossKg/1000).toFixed(3):(load!==''&&tare!==''?+(Number(load)+Number(tare)).toFixed(3):'');
  const existing=train.find(x=>norm(x.number)===w.number);
- const fields={number:fmt(w.number),type:'Kesselwagen',state:'beladen',unNr:'1202',gefZettel:'3',remarks:'Teil-Wagenliste importiert'};
+ const fields={number:fmt(w.number),remarks:'Teil-Wagenliste importiert'};
+ if(load!=='')fields.state='beladen';
  if(load!==''){fields.load=load;fields.manifestLoadKg=w.loadKg;}
  if(tare!==''){fields.tare=tare;fields.manifestTareKg=w.tareKg;}
  if(total!==''){fields.total=total;fields.manifestGrossKg=w.grossKg||'';}
