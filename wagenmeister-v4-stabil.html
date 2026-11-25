@@ -23,7 +23,7 @@ const $=id=>document.getElementById(id), num=v=>Number(String(v??'').replace(','
 function fmt(v){const d=norm(v).slice(0,12);if(d.length<=2)return d;if(d.length<=4)return d.slice(0,2)+' '+d.slice(2);if(d.length<=8)return d.slice(0,2)+' '+d.slice(2,4)+' '+d.slice(4);if(d.length<=11)return d.slice(0,2)+' '+d.slice(2,4)+' '+d.slice(4,8)+' '+d.slice(8);return d.slice(0,2)+' '+d.slice(2,4)+' '+d.slice(4,8)+' '+d.slice(8,11)+'-'+d.slice(11)}
 function valid(v){const d=norm(v);if(d.length!==12)return false;let s=0;for(let i=0;i<11;i++){let x=Number(d[i])*(i%2?1:2);s+=Math.floor(x/10)+x%10}return(10-s%10)%10===Number(d[11])}
 function dangerDefaults(un){const u=norm(un);if(u==='1202'||u==='1863')return{ridGef:'30',gefZettel:'3'};if(u==='1203')return{ridGef:'33',gefZettel:'3'};return null}
-function brakeValue(w,mode){const p=num(w.brakeP),g=num(w.brakeG);return mode==='G'?(g||p):(p||g)}
+function brakeValue(w,mode){return mode==='G'?num(w.brakeG):num(w.brakeP)}
 function pRule(len){if(len<=500)return{label:'-',factor:1};if(len<=600)return{label:'-5%',factor:.95};if(len<=700)return{label:'-10%',factor:.90};if(len<=815)return{label:'-19%',factor:.81};return{label:'PRÜFEN',factor:0}}
 function gRule25(len,sequential=false){if(len<=700)return{label:'-25%',factor:.75};if(len<=815)return sequential?{label:'-25%, danach -5%',factor:.75*.95}:{label:'-30%',factor:.70};return{label:'PRÜFEN',factor:0}}
 function brakeRules(a=train){
@@ -34,13 +34,14 @@ function brakeRules(a=train){
   const out={weight,len,schedule:sched,warning:'',p:0,g:0,raw:0,effective:0,pAxles:0};
   if(weight>4000)out.warning='Zuggewicht über 4000 t – Merkblattbereich überschritten.';
   if(len>815)out.warning=(out.warning?out.warning+' ':'')+'Wagenzug länger als 815 m – Merkblattbereich überschritten.';
-  let pExceptionAxles=0;
+  let pExceptionAxles=0,missingBrakeData=0;
   loaded.forEach((w,i)=>{
     let mode='P',rule={label:'-',factor:1};
     if(sched==='G'){
       if(w.gUnavailable){
         const ax=num(w.axles);
-        if(pExceptionAxles+ax<=12){mode='P';rule={label:'Ausnahme bis 12 Achsen',factor:1};pExceptionAxles+=ax}
+        if(ax<=0){mode='PRÜFEN';rule={label:'Achszahl fehlt – prüfen',factor:0}}
+        else if(pExceptionAxles+ax<=12){mode='P';rule={label:'Ausnahme bis 12 Achsen',factor:1};pExceptionAxles+=ax}
         else{mode='AUS';rule={label:'Bremse ausschalten',factor:0}}
       }else{mode='G';rule=len<=700?{label:'-',factor:1}:len<=815?{label:'-5%',factor:.95}:{label:'PRÜFEN',factor:0}}
     }else if(weight<=1200){
@@ -58,10 +59,12 @@ function brakeRules(a=train){
     }else{mode='PRÜFEN';rule={label:'PRÜFEN',factor:0}}
     w.brakeMode=mode;w.brakeRule=rule.label;w.brakeFactor=rule.factor;
     const raw=mode==='AUS'||mode==='PRÜFEN'?0:brakeValue(w,mode);
+    if(mode!=='AUS'&&mode!=='PRÜFEN'&&raw<=0)missingBrakeData++;
     w.rawBrakeWeight=raw;w.effectiveBrakeWeight=raw*rule.factor;
     if(mode==='G')out.g+=raw;if(mode==='P')out.p+=raw;out.raw+=raw;
   });
   out.pAxles=pExceptionAxles;
+  if(missingBrakeData)out.warning=(out.warning?out.warning+' ':'')+missingBrakeData+' Wagen ohne Bremsgewicht in der eingestellten Bremsstellung – bitte prüfen.';
   out.effective=Math.round(loaded.reduce((s,w)=>s+num(w.effectiveBrakeWeight),0));
   return out;
 }
